@@ -6,6 +6,7 @@ import { getSupabaseStorageBucket } from "@/lib/constants/env";
 import {
   buildImageStoragePath,
   validateImageFile,
+  MAX_IMAGE_BYTES,
   type AllowedImageMimeType,
 } from "@/lib/validation/image";
 import type { ImageActionState } from "@/lib/images/types";
@@ -102,6 +103,58 @@ export async function uploadRecipeImage(
 
   const result = await putObjectAndReference(recipeId, file, validation.mimeType);
   return result.ok ? { status: "success" } : { status: "error", message: result.message };
+}
+
+/**
+ * Downloads an image discovered on a recipe's source page and attaches it to
+ * the recipe. Best-effort and quiet: used only when creating a recipe via the
+ * "import from URL" flow, where the recipe has already been saved and a
+ * missing image must never fail the save.
+ */
+export async function uploadRecipeImageFromUrl(
+  recipeId: string,
+  imageUrl: string
+): Promise<ImageActionState> {
+  await requireSession();
+
+  try {
+    const res = await fetch(imageUrl, {
+      headers: { accept: "image/*" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      return { status: "error", message: UPLOAD_FAILED };
+    }
+
+    const contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+    const bytes = await res.arrayBuffer();
+
+    const validation = validateImageFile({ type: contentType, size: bytes.byteLength });
+    if (!validation.ok) {
+      return { status: "error", message: validation.message };
+    }
+    if (bytes.byteLength > MAX_IMAGE_BYTES) {
+      return { status: "error", message: UPLOAD_FAILED };
+    }
+
+    const fallbackName = (() => {
+      try {
+        return decodeURIComponent(new URL(imageUrl).pathname.split("/").pop() ?? "");
+      } catch {
+        return "";
+      }
+    })();
+    const file = new File([bytes], (fallbackName || "source-image").slice(0, IMAGE_ORIGINAL_NAME_MAX), {
+      type: validation.mimeType,
+    });
+
+    const result = await putObjectAndReference(recipeId, file, validation.mimeType);
+    return result.ok ? { status: "success" } : { status: "error", message: result.message };
+  } catch (error) {
+    console.error("uploadRecipeImageFromUrl: failed", imageUrl, error);
+    return { status: "error", message: UPLOAD_FAILED };
+  }
 }
 
 /**

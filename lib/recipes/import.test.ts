@@ -1,0 +1,185 @@
+import { describe, it, expect } from "vitest";
+import {
+  deriveDietType,
+  extractRecipeFromHtml,
+  mapCuisine,
+  minutesToPrepTimeCategory,
+  parseIsoDurationMinutes,
+  splitIngredient,
+} from "./import";
+
+describe("parseIsoDurationMinutes", () => {
+  it("reads hours and minutes", () => {
+    expect(parseIsoDurationMinutes("PT1H30M")).toBe(90);
+    expect(parseIsoDurationMinutes("PT20M")).toBe(20);
+    expect(parseIsoDurationMinutes("PT2H")).toBe(120);
+  });
+
+  it("reads days and rounds seconds", () => {
+    expect(parseIsoDurationMinutes("P1DT2H")).toBe(1560);
+    expect(parseIsoDurationMinutes("PT90S")).toBe(2);
+  });
+
+  it("returns null for empty or unparseable input", () => {
+    expect(parseIsoDurationMinutes("")).toBeNull();
+    expect(parseIsoDurationMinutes("PT0S")).toBeNull();
+    expect(parseIsoDurationMinutes("half an hour")).toBeNull();
+    expect(parseIsoDurationMinutes(undefined)).toBeNull();
+  });
+});
+
+describe("minutesToPrepTimeCategory", () => {
+  it("buckets minutes to the controlled categories", () => {
+    expect(minutesToPrepTimeCategory(10)).toBe("UNDER_15");
+    expect(minutesToPrepTimeCategory(15)).toBe("FROM_15_TO_30");
+    expect(minutesToPrepTimeCategory(30)).toBe("FROM_15_TO_30");
+    expect(minutesToPrepTimeCategory(45)).toBe("FROM_30_TO_60");
+    expect(minutesToPrepTimeCategory(90)).toBe("FROM_60_TO_90");
+    expect(minutesToPrepTimeCategory(150)).toBe("OVER_90");
+  });
+
+  it("returns null when there is no usable time", () => {
+    expect(minutesToPrepTimeCategory(null)).toBeNull();
+    expect(minutesToPrepTimeCategory(0)).toBeNull();
+  });
+});
+
+describe("mapCuisine", () => {
+  it("maps a recipeCuisine string or array to the enum", () => {
+    expect(mapCuisine("Italian", null, null)).toBe("ITALIAN");
+    expect(mapCuisine(["Thai"], null, null)).toBe("THAI");
+    expect(mapCuisine("mediterranean", null, null)).toBe("MEDITERRANEAN");
+  });
+
+  it("understands common synonyms", () => {
+    expect(mapCuisine("Tex-Mex", null, null)).toBe("MEXICAN");
+    expect(mapCuisine("Moroccan", null, null)).toBe("NORTH_AFRICAN");
+  });
+
+  it("falls back to keywords/title, then null", () => {
+    expect(mapCuisine(null, ["quick", "italian dinner"], null)).toBe("ITALIAN");
+    expect(mapCuisine(null, null, "Weeknight stir fry")).toBeNull();
+  });
+});
+
+describe("deriveDietType", () => {
+  it("trusts an explicit suitableForDiet value", () => {
+    expect(
+      deriveDietType("https://schema.org/VeganDiet", [{ name: "Beef", quantity: null }], null, null)
+    ).toEqual({ value: "VEGETARIAN", guessed: false });
+  });
+
+  it("detects meat or fish from the ingredients", () => {
+    const result = deriveDietType(
+      null,
+      [
+        { name: "Chicken thighs", quantity: "900g" },
+        { name: "Onion", quantity: "1" },
+      ],
+      "Chicken curry",
+      null
+    );
+    expect(result).toEqual({ value: "MEAT_OR_FISH", guessed: false });
+  });
+
+  it("guesses vegetarian when nothing meaty is present", () => {
+    const result = deriveDietType(
+      null,
+      [
+        { name: "Chickpeas", quantity: "400g" },
+        { name: "Spinach", quantity: "200g" },
+        { name: "Onion", quantity: "1" },
+        { name: "Garlic", quantity: "2 cloves" },
+      ],
+      "Chickpea and spinach stew",
+      null
+    );
+    expect(result).toEqual({ value: "VEGETARIAN", guessed: true });
+  });
+
+  it("stays undecided with too little to go on", () => {
+    expect(deriveDietType(null, [{ name: "Salt", quantity: null }], null, null)).toEqual({
+      value: null,
+      guessed: false,
+    });
+  });
+});
+
+describe("splitIngredient", () => {
+  it("splits a leading quantity from the name", () => {
+    expect(splitIngredient("2 tbsp olive oil")).toEqual({ quantity: "2 tbsp", name: "Olive oil" });
+    expect(splitIngredient("400g tin chopped tomatoes")).toEqual({
+      quantity: "400 g tin",
+      name: "Chopped tomatoes",
+    });
+  });
+
+  it("leaves quantity null when there is no amount", () => {
+    expect(splitIngredient("Salt and pepper, to taste")).toEqual({
+      quantity: null,
+      name: "Salt and pepper, to taste",
+    });
+  });
+});
+
+describe("extractRecipeFromHtml", () => {
+  const html = `
+    <html><head>
+    <meta property="og:image" content="/images/pie.jpg" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      "name": "Cottage Pie",
+      "description": "A proper British cottage pie.",
+      "recipeCuisine": "British",
+      "totalTime": "PT1H15M",
+      "recipeIngredient": ["500g beef mince", "2 carrots, diced", "1 tbsp tomato puree"],
+      "recipeInstructions": [
+        { "@type": "HowToStep", "text": "Brown the mince." },
+        { "@type": "HowToStep", "text": "Simmer with the veg." },
+        { "@type": "HowToStep", "text": "Top with mash and bake." }
+      ]
+    }
+    </script></head><body></body></html>`;
+
+  it("pulls the core recipe out of JSON-LD", () => {
+    const result = extractRecipeFromHtml(html, "https://example.com/cottage-pie");
+    expect(result).not.toBeNull();
+    const recipe = result!.recipe;
+    expect(recipe.title).toBe("Cottage Pie");
+    expect(recipe.summaryDescription).toBe("A proper British cottage pie.");
+    expect(recipe.cuisine).toBe("BRITISH");
+    expect(recipe.prepTimeCategory).toBe("FROM_60_TO_90");
+    expect(recipe.dietType).toBe("MEAT_OR_FISH");
+    expect(recipe.imageUrl).toBe("https://example.com/images/pie.jpg");
+    expect(recipe.ingredients).toEqual([
+      { quantity: "500 g", name: "Beef mince" },
+      { quantity: "2", name: "Carrots, diced" },
+      { quantity: "1 tbsp", name: "Tomato puree" },
+    ]);
+    expect(recipe.instructions).toBe(
+      "Brown the mince.\n\nSimmer with the veg.\n\nTop with mash and bake."
+    );
+  });
+
+  it("returns null when the page has no ingredients and no method", () => {
+    expect(
+      extractRecipeFromHtml("<html><body><p>just a blog post</p></body></html>", "https://x.test")
+    ).toBeNull();
+  });
+
+  it("falls back to microdata when there is no JSON-LD", () => {
+    const microdata = `
+      <div itemscope itemtype="https://schema.org/Recipe">
+        <h1 itemprop="name">Quick Salad</h1>
+        <li itemprop="recipeIngredient">1 cucumber, sliced</li>
+        <li itemprop="recipeIngredient">2 tbsp olive oil</li>
+        <div itemprop="recipeInstructions">Toss everything together.</div>
+      </div>`;
+    const result = extractRecipeFromHtml(microdata, "https://x.test/salad");
+    expect(result).not.toBeNull();
+    expect(result!.recipe.ingredients).toHaveLength(2);
+    expect(result!.recipe.instructions).toBe("Toss everything together.");
+  });
+});

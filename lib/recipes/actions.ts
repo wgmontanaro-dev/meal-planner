@@ -10,7 +10,9 @@ import {
   removeRecipeImage,
   replaceRecipeImage,
   uploadRecipeImage,
+  uploadRecipeImageFromUrl,
 } from "@/lib/images/actions";
+import { importRecipeFromUrl, type ScrapedRecipe } from "@/lib/recipes/import";
 import { signRecipeImageUrls } from "@/lib/images/urls";
 import type { RecipeImageUrls } from "@/lib/images/types";
 import {
@@ -28,6 +30,7 @@ import type {
   RecipeFormState,
   RecipeFormValues,
   DeleteRecipeState,
+  ImportRecipeState,
 } from "@/lib/recipes/types";
 
 // Postgres foreign-key-violation error code. Returned when a recipe delete
@@ -299,13 +302,71 @@ export async function createRecipe(
 
   // The recipe transaction has committed; an optional image failure here
   // must not undo it (SPEC.md section 11.7 — the image is optional). The
-  // helper logs its own errors.
+  // helpers log their own errors. A file the user chose wins over an image
+  // discovered by the "import from URL" flow.
   if (readNewImageFile(formData)) {
     await uploadRecipeImage(createdRecipeId, formData);
+  } else {
+    const importedImageUrl = String(formData.get("importedImageUrl") ?? "").trim();
+    if (importedImageUrl) {
+      await uploadRecipeImageFromUrl(createdRecipeId, importedImageUrl);
+    }
   }
 
   revalidatePath("/recipes");
   redirect(`/recipes/${createdRecipeId}`);
+}
+
+/** Maps a scraped recipe onto the shape the Add Recipe form expects. */
+function scrapedToFormValues(recipe: ScrapedRecipe): RecipeFormValues {
+  return {
+    title: recipe.title ?? "",
+    summaryDescription: recipe.summaryDescription ?? "",
+    sourceUrl: recipe.sourceUrl,
+    instructions: recipe.instructions ?? "",
+    prepTimeCategory: recipe.prepTimeCategory ?? "",
+    cuisine: recipe.cuisine ?? "",
+    storageType: "",
+    dietType: recipe.dietType ?? "",
+    childFriendly: "",
+    preparationType: "",
+    ingredients:
+      recipe.ingredients.length > 0
+        ? recipe.ingredients.map((ingredient) => ({
+            name: ingredient.name,
+            quantity: ingredient.quantity ?? "",
+          }))
+        : [{ name: "", quantity: "" }],
+  };
+}
+
+/**
+ * Fetches a recipe web page and returns form values to pre-fill the Add
+ * Recipe form. Never writes anything: the user reviews the result and submits
+ * the normal create form. On failure the caller falls back to manual entry.
+ */
+export async function importRecipeFromUrlAction(
+  _prevState: ImportRecipeState,
+  formData: FormData
+): Promise<ImportRecipeState> {
+  await requireSession();
+
+  const url = String(formData.get("url") ?? "").trim();
+  if (!url) {
+    return { status: "error", message: "Enter the address of a recipe page." };
+  }
+
+  const outcome = await importRecipeFromUrl(url);
+  if (!outcome.ok) {
+    return { status: "error", message: outcome.reason, url };
+  }
+
+  return {
+    status: "success",
+    values: scrapedToFormValues(outcome.recipe),
+    importedImageUrl: outcome.recipe.imageUrl,
+    warnings: outcome.warnings,
+  };
 }
 
 export async function updateRecipe(

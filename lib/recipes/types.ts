@@ -51,3 +51,19 @@ export type DeleteRecipeState = {
 };
 
 export const initialDeleteRecipeState: DeleteRecipeState = { status: "idle" };
+
+/** Result of trying to pre-fill the Add Recipe form from a source URL. */
+export type ImportRecipeState = {
+  status: "idle" | "error" | "success";
+  message?: string;
+  /** The address that was submitted, echoed back so the field survives an error. */
+  url?: string;
+  /** Non-fatal notes about fields that could not be filled in. */
+  warnings?: string[];
+  /** Populated form values on success, ready to hand to the recipe form. */
+  values?: RecipeFormValues;
+  /** An image spotted on the source page, uploaded when the recipe is saved. */
+  importedImageUrl?: string | null;
+};
+
+export const initialImportRecipeState: ImportRecipeState = { status: "idle" };

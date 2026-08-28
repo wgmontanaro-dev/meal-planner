@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +25,11 @@ import { CategorySelect } from "@/components/recipes/category-select";
 import { IngredientEditor } from "@/components/recipes/ingredient-editor";
 import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
-import { createRecipe, updateRecipe } from "@/lib/recipes/actions";
+import {
+  createRecipe,
+  importRecipeFromUrlAction,
+  updateRecipe,
+} from "@/lib/recipes/actions";
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   IMAGE_TYPE_MESSAGE,
@@ -26,6 +37,7 @@ import {
 } from "@/lib/validation/image";
 import type { RecipeImageUrls } from "@/lib/images/types";
 import {
+  initialImportRecipeState,
   initialRecipeFormState,
   type RecipeFormState,
   type RecipeFormValues,
@@ -104,14 +116,34 @@ function ImageField({
   currentImage,
   recipeTitle,
   error,
+  discoveredImageUrl,
 }: {
   currentImage: RecipeImageUrls | null;
   recipeTitle: string;
   error?: string;
+  discoveredImageUrl?: string | null;
 }) {
   return (
     <section className="flex flex-col gap-3">
       <h3 className="text-sm font-semibold text-muted-foreground">Image</h3>
+
+      {!currentImage && discoveredImageUrl ? (
+        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border p-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={discoveredImageUrl}
+            alt=""
+            className="size-16 shrink-0 rounded object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            Found an image on the source page. It’ll be added when you save, unless you
+            choose your own below.
+          </p>
+        </div>
+      ) : null}
 
       {currentImage ? (
         <div className="flex items-center gap-3">
@@ -153,11 +185,13 @@ function FormFields({
   state,
   currentImage,
   recipeTitle,
+  discoveredImageUrl,
 }: {
   values: RecipeFormValues;
   state: RecipeFormState;
   currentImage: RecipeImageUrls | null;
   recipeTitle: string;
+  discoveredImageUrl?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -344,6 +378,7 @@ function FormFields({
         currentImage={currentImage}
         recipeTitle={recipeTitle}
         error={state.fieldErrors?.image}
+        discoveredImageUrl={discoveredImageUrl}
       />
     </div>
   );
@@ -357,6 +392,7 @@ export function RecipeForm({
   currentImage,
   recipeTitle,
   onClose,
+  importedImageUrl,
 }: {
   action: (state: RecipeFormState, formData: FormData) => Promise<RecipeFormState>;
   submitLabel: string;
@@ -365,6 +401,8 @@ export function RecipeForm({
   currentImage: RecipeImageUrls | null;
   recipeTitle: string;
   onClose: () => void;
+  /** An image URL found by the "import from URL" flow, attached on save. */
+  importedImageUrl?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(action, initialRecipeFormState);
   const currentValues = state.values ?? values;
@@ -380,11 +418,15 @@ export function RecipeForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
+      {importedImageUrl ? (
+        <input type="hidden" name="importedImageUrl" value={importedImageUrl} />
+      ) : null}
       <FormFields
         values={currentValues}
         state={state}
         currentImage={currentImage}
         recipeTitle={recipeTitle}
+        discoveredImageUrl={importedImageUrl}
       />
       {state.status === "error" && !state.fieldErrors ? (
         <p role="alert" className="text-sm text-destructive">
@@ -403,6 +445,82 @@ export function RecipeForm({
   );
 }
 
+type ImportedPayload = {
+  values: RecipeFormValues;
+  importedImageUrl: string | null;
+  warnings: string[];
+};
+
+type AddStep =
+  | { kind: "start" }
+  | { kind: "manual" }
+  | ({ kind: "imported" } & ImportedPayload);
+
+/** First screen of the Add Recipe dialog: paste a link, or switch to manual. */
+function AddRecipeStart({
+  onImported,
+  onManual,
+}: {
+  onImported: (payload: ImportedPayload) => void;
+  onManual: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    importRecipeFromUrlAction,
+    initialImportRecipeState
+  );
+
+  useEffect(() => {
+    if (state.status === "success" && state.values) {
+      onImported({
+        values: state.values,
+        importedImageUrl: state.importedImageUrl ?? null,
+        warnings: state.warnings ?? [],
+      });
+    }
+  }, [state, onImported]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <form action={formAction} className="flex flex-col gap-3">
+        <Label htmlFor="import-url">Recipe web address</Label>
+        <Input
+          id="import-url"
+          name="url"
+          type="url"
+          inputMode="url"
+          autoFocus
+          defaultValue={state.url ?? ""}
+          placeholder="https://example.com/best-lasagne"
+          aria-invalid={state.status === "error"}
+          aria-describedby={state.status === "error" ? "import-url-error" : "import-url-hint"}
+        />
+        <p id="import-url-hint" className="text-xs text-muted-foreground">
+          The ingredients and method come first; the title, image, prep time, cuisine and
+          diet type are filled in when the page provides them.
+        </p>
+        {state.status === "error" ? (
+          <p id="import-url-error" role="alert" className="text-sm text-destructive">
+            {state.message}
+          </p>
+        ) : null}
+        <Button type="submit" disabled={pending} className="self-start">
+          {pending ? "Fetching…" : "Import recipe"}
+        </Button>
+      </form>
+
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <Separator className="flex-1" />
+        or
+        <Separator className="flex-1" />
+      </div>
+
+      <Button type="button" variant="outline" onClick={onManual} className="self-start">
+        Enter the details manually
+      </Button>
+    </div>
+  );
+}
+
 export function AddRecipeFormDialog({
   trigger,
   open,
@@ -415,21 +533,68 @@ export function AddRecipeFormDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
+  const [step, setStep] = useState<AddStep>({ kind: "start" });
+
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    if (!next) setStep({ kind: "start" });
+  }
+
+  const handleImported = useCallback((payload: ImportedPayload) => {
+    setStep({ kind: "imported", ...payload });
+  }, []);
+
+  const description =
+    step.kind === "imported"
+      ? "Here’s what we could read from the page. Check it over, then save."
+      : step.kind === "manual"
+        ? "Add a recipe to the shared library so it can be planned on the calendar."
+        : "Import a recipe from a web page, or enter the details yourself.";
 
   return (
-    <Dialog open={isOpen} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={changeOpen}>
       {trigger ? <DialogTrigger render={trigger} /> : null}
-      <DialogContent
-        className={FORM_DIALOG_CONTENT_CLASS}
-      >
+      <DialogContent className={FORM_DIALOG_CONTENT_CLASS}>
         <div className="flex flex-col gap-6 p-4">
           <DialogHeader>
-            <DialogTitle>Add recipe</DialogTitle>
-            <DialogDescription>
-              Add a recipe to the shared library so it can be planned on the calendar.
-            </DialogDescription>
+            <DialogTitle>
+              {step.kind === "imported" ? "Review imported recipe" : "Add recipe"}
+            </DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+            {step.kind !== "start" ? (
+              <button
+                type="button"
+                onClick={() => setStep({ kind: "start" })}
+                className="self-start text-sm text-primary underline-offset-4 hover:underline"
+              >
+                ‹ Back
+              </button>
+            ) : null}
           </DialogHeader>
-          {isOpen ? (
+
+          {!isOpen ? null : step.kind === "start" ? (
+            <AddRecipeStart onImported={handleImported} onManual={() => setStep({ kind: "manual" })} />
+          ) : step.kind === "imported" ? (
+            <>
+              {step.warnings.length > 0 ? (
+                <ul className="flex flex-col gap-1 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
+                  {step.warnings.map((warning) => (
+                    <li key={warning}>• {warning}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <RecipeForm
+                action={createRecipe}
+                submitLabel="Save recipe"
+                pendingLabel="Saving…"
+                values={step.values}
+                currentImage={null}
+                recipeTitle={step.values.title}
+                importedImageUrl={step.importedImageUrl}
+                onClose={() => changeOpen(false)}
+              />
+            </>
+          ) : (
             <RecipeForm
               action={createRecipe}
               submitLabel="Save recipe"
@@ -437,9 +602,9 @@ export function AddRecipeFormDialog({
               values={EMPTY_VALUES}
               currentImage={null}
               recipeTitle=""
-              onClose={() => setOpen(false)}
+              onClose={() => changeOpen(false)}
             />
-          ) : null}
+          )}
         </div>
       </DialogContent>
     </Dialog>
