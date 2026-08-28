@@ -60,7 +60,7 @@ const EMPTY_VALUES: RecipeFormValues = {
   ingredients: [{ name: "", quantity: "" }],
 };
 
-function recipeToFormValues(recipe: RecipeWithIngredients): RecipeFormValues {
+export function recipeToFormValues(recipe: RecipeWithIngredients): RecipeFormValues {
   return {
     title: recipe.title,
     summaryDescription: recipe.summaryDescription ?? "",
@@ -349,7 +349,7 @@ function FormFields({
   );
 }
 
-function RecipeForm({
+export function RecipeForm({
   action,
   submitLabel,
   pendingLabel,
@@ -368,6 +368,15 @@ function RecipeForm({
 }) {
   const [state, formAction, pending] = useActionState(action, initialRecipeFormState);
   const currentValues = state.values ?? values;
+
+  // `updateRecipe` returns a success state instead of redirecting, so the
+  // caller can close its dialog. (`createRecipe` still redirects, so this
+  // never fires for the add form.)
+  useEffect(() => {
+    if (state.status === "success") {
+      onClose();
+    }
+  }, [state, onClose]);
 
   return (
     <form action={formAction} className="flex flex-col gap-6">

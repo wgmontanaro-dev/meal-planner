@@ -358,9 +358,12 @@ export async function updateRecipe(
     await replaceRecipeImage(recipeId, formData);
   }
 
+  // No redirect: the edit form runs both from the detail page and from a
+  // modal on the recipe list. Callers close the dialog on "success" and the
+  // revalidated route (list or detail) re-renders with the new data.
   revalidatePath("/recipes");
   revalidatePath(`/recipes/${recipeId}`);
-  redirect(`/recipes/${recipeId}`);
+  return { status: "success" };
 }
 
 /**

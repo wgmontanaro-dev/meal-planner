@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -84,7 +83,13 @@ function compare(a: number | string, b: number | string): number {
   return String(a).localeCompare(String(b));
 }
 
-export function RecipeTable({ recipes }: { recipes: RecipeWithImage[] }) {
+export function RecipeTable({
+  recipes,
+  onEdit,
+}: {
+  recipes: RecipeWithImage[];
+  onEdit: (recipeId: string) => void;
+}) {
   const [sort, setSort] = useState<{ key: ColumnKey; dir: SortDir } | null>(null);
   const [filters, setFilters] = useState<Partial<Record<ColumnKey, string>>>({});
 
@@ -238,12 +243,13 @@ export function RecipeTable({ recipes }: { recipes: RecipeWithImage[] }) {
                 className="border-b border-border last:border-0 hover:bg-muted/40"
               >
                 <td className="px-3 py-2">
-                  <Link
-                    href={`/recipes/${recipe.id}`}
-                    className="font-medium underline-offset-4 hover:text-primary hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => onEdit(recipe.id)}
+                    className="text-left font-medium underline-offset-4 hover:text-primary hover:underline"
                   >
                     {recipe.title}
-                  </Link>
+                  </button>
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">{CUISINE_LABELS[recipe.cuisine]}</td>
                 <td className="px-3 py-2 whitespace-nowrap">

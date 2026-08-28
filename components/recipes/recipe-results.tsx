@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RecipeLibrary } from "@/components/recipes/recipe-library";
 import { RecipeTable } from "@/components/recipes/recipe-table";
+import { RecipeEditModal } from "@/components/recipes/recipe-edit-modal";
 import type { RecipeView } from "@/components/recipes/recipe-view-toggle";
 import type { RecipeWithImage } from "@/lib/recipes/types";
 
@@ -23,6 +24,7 @@ export function RecipeResults({
   view: RecipeView;
 }) {
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const query = search.trim().toLowerCase();
   const filtered = query
     ? recipes.filter((recipe) => recipe.title.toLowerCase().includes(query))
@@ -53,10 +55,14 @@ export function RecipeResults({
           No recipes match your search.
         </p>
       ) : view === "list" ? (
-        <RecipeTable recipes={filtered} />
+        <RecipeTable recipes={filtered} onEdit={setEditingId} />
       ) : (
-        <RecipeLibrary recipes={filtered} />
+        <RecipeLibrary recipes={filtered} onEdit={setEditingId} />
       )}
+
+      {editingId ? (
+        <RecipeEditModal recipeId={editingId} onClose={() => setEditingId(null)} />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import Link from "next/link";
+"use client";
+
 import { Refrigerator } from "lucide-react";
 import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import {
@@ -26,7 +27,13 @@ function SourceLink({ sourceUrl }: { sourceUrl: string | null }) {
   );
 }
 
-function RecipeCard({ recipe }: { recipe: RecipeWithImage }) {
+function RecipeCard({
+  recipe,
+  onEdit,
+}: {
+  recipe: RecipeWithImage;
+  onEdit: (recipeId: string) => void;
+}) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors hover:border-primary">
       <RecipeImageThumbnail
@@ -38,12 +45,13 @@ function RecipeCard({ recipe }: { recipe: RecipeWithImage }) {
       />
 
       <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <Link
-          href={`/recipes/${recipe.id}`}
-          className="line-clamp-2 font-heading text-sm leading-snug font-semibold underline-offset-4 hover:text-primary hover:underline"
+        <button
+          type="button"
+          onClick={() => onEdit(recipe.id)}
+          className="line-clamp-2 text-left font-heading text-sm leading-snug font-semibold underline-offset-4 hover:text-primary hover:underline"
         >
           {recipe.title}
-        </Link>
+        </button>
 
         <div className="flex flex-wrap gap-1">
           <span className="rounded bg-primary-container px-1.5 py-0.5 text-[0.65rem] font-medium text-primary-container-foreground">
@@ -66,11 +74,17 @@ function RecipeCard({ recipe }: { recipe: RecipeWithImage }) {
   );
 }
 
-export function RecipeLibrary({ recipes }: { recipes: RecipeWithImage[] }) {
+export function RecipeLibrary({
+  recipes,
+  onEdit,
+}: {
+  recipes: RecipeWithImage[];
+  onEdit: (recipeId: string) => void;
+}) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {recipes.map((recipe) => (
-        <RecipeCard key={recipe.id} recipe={recipe} />
+        <RecipeCard key={recipe.id} recipe={recipe} onEdit={onEdit} />
       ))}
     </div>
   );
