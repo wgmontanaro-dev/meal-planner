@@ -65,6 +65,37 @@ so a change doesn't undo it:
   live database was seeded this way from the owner's ~80 Apple Notes
   recipes; **its category fields (`cuisine`, `prepTimeCategory`, …) are
   best-guesses, not authoritative.** `import/` is throwaway.
+- **Only the title is required.** Since MVP, a recipe needs a title and
+  nothing else — the six controlled categories and the ingredient list may
+  all be empty. Migration `20260828120000_optional_recipe_categories.sql`
+  drops the `NOT NULL`s and widens the `CHECK`s to permit `NULL` (meaning
+  "not specified"); `recipeInputSchema` maps a blank category to `null` and
+  no longer requires an ingredient. Read code uses `categoryLabel()`
+  (`lib/constants/categories.ts`), which renders "—" for an unset value, and
+  the compact card/calendar chips hide themselves when empty. This
+  supersedes SPEC.md §11.4 and §11.6.
+- **Add a recipe from a URL.** The Add Recipe dialog opens on a chooser —
+  paste a recipe web address, or enter the details by hand.
+  `lib/recipes/import.ts` (a pure, unit-tested module) fetches the page and
+  reads a recipe out of schema.org JSON-LD, then microdata, then OpenGraph:
+  ingredients and method first, then title / summary / image, then *derived*
+  prep time (ISO-8601 `totalTime`), cuisine (`recipeCuisine` + a synonym
+  table) and diet type (`suitableForDiet`, else a meat/fish keyword scan of
+  the ingredients — a soft guess is flagged as a warning).
+  `importRecipeFromUrlAction` in `lib/recipes/actions.ts` runs it and
+  returns pre-filled form values plus warnings; it never writes — the user
+  reviews and submits the normal create form. `createRecipe` then attaches
+  any discovered image via `uploadRecipeImageFromUrl` (`lib/images/actions.ts`,
+  best-effort; a file the user picks wins). Pages with no readable recipe
+  (video, forum, JS-only) fail cleanly to "add it manually". Retries and a
+  Wayback Machine fallback cover flaky or blocking hosts.
+- **Ingredient backfill scripts.** `scripts/populate-ingredients-from-source.mjs`
+  and `scripts/populate-ingredients-manual.mjs` were a one-off pass to fill
+  ingredients for library recipes that had a `source_url` but no ingredient
+  rows, using the same extraction the URL-import feature now uses.
+  `scripts/list-recipes-with-source.mjs` reports coverage;
+  `import/ingredient-scrape-report.json` is the run output. Kept for
+  re-runs; not part of the app.
 
 **Verify a change with** `npm test && npx tsc --noEmit && npm run lint &&
 npm run build`, then a manual browser pass (`npm run dev`). Note: automated
@@ -182,9 +213,11 @@ the Supabase dashboard's SQL editor, in filename order.
 The current migrations create the `recipes`, `ingredients`, and
 `meal_plan_entries` tables along with their constraints and indexes, and
 the `create_recipe_with_ingredients` / `update_recipe_with_ingredients`
-transactional functions used by the recipe form. They do not insert any
-demonstration data — a fresh deployment starts with an empty recipe
-library, as required by the specification.
+transactional functions used by the recipe form. A later migration makes
+every recipe **category** column nullable (only the title is required —
+see "Working on this codebase"). They do not insert any demonstration
+data — a fresh deployment starts with an empty recipe library, as required
+by the specification.
 
 ## 4. Set up storage
 
@@ -253,7 +286,13 @@ optional `now: Date`. Current coverage:
   previous object only after the new one is stored and referenced.
 - `lib/recipes/stock-image.test.ts` — the fallback-illustration picker:
   title keyword beats cuisine fallback, cuisine used when the title has no
-  signal, and a signal-less recipe still gets a stable, evenly-spread pick.
+  signal, a signal-less recipe still gets a stable, evenly-spread pick, and
+  a recipe with no cuisine or diet set is handled.
+- `lib/recipes/import.test.ts` — the source-URL importer: ISO-8601 duration
+  → prep-time bucket, cuisine mapping and synonyms, diet-type derivation
+  (explicit `suitableForDiet`, meat/fish scan, soft vegetarian guess), the
+  ingredient-line splitter, and end-to-end extraction from fixture HTML
+  (JSON-LD and microdata).
 
 Everything else — including the storage round-trip against a real bucket,
 `window.print()` output, and the client-side table sort/filter and library
@@ -280,6 +319,8 @@ demonstration recipes or meal plans.
 ## Project structure
 
 ```
+.claude/
+  launch.json       Dev-server launch config (used by preview tooling)
 app/
   globals.css       Design tokens (colours, radii) + print styles
   layout.tsx        Root layout; loads Work Sans + Literata via next/font
@@ -305,14 +346,20 @@ lib/
   dates/            Europe/London calendar-month + retention-boundary helpers
   images/           Recipe-image upload/replace/remove actions + signed-URL helper
   meal-plans/       Meal-plan server actions and form/picker types
-  recipes/          Recipe server actions, form/filter types, stock-image picker
+  recipes/          Recipe server actions, form/filter types, stock-image
+                    picker, source-URL recipe importer (import.ts)
   shopping-list/    Shopping-list server action + pure assembly/formatting
   validation/       Zod schemas (recipe, meal plan, shopping list, image)
 public/
   stock/            15 bundled recipe illustrations (fallback when no upload)
 scripts/
-  import-recipes.mjs  Bulk recipe importer (reads a JSON array, calls the RPC)
-import/             Throwaway: reviewed recipe JSON + import notes (see its README)
+  import-recipes.mjs               Bulk recipe importer (JSON array -> RPC)
+  populate-ingredients-from-source.mjs  One-off: scrape ingredients for
+                                   recipes that have a source_url but none
+  populate-ingredients-manual.mjs  One-off: same, from hand-transcribed lists
+  list-recipes-with-source.mjs     Report source-URL / ingredient coverage
+import/             Throwaway: reviewed recipe JSON, import notes (see its
+                    README), and the ingredient-scrape report
 stitch/             Reference: the Stitch design exports the UI was built from
 supabase/
   migrations/       SQL migrations, applied in filename order

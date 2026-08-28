@@ -612,6 +612,10 @@ Exactly one value is required. Default to "Not specified".
 
 ### 11.4 Ingredients
 
+> **Amended after MVP:** an ingredient list is no longer required — a recipe
+> may be saved with zero ingredients. The rules below still apply to any
+> ingredient that *is* entered. See README → "Working on this codebase".
+
 - At least one ingredient is required.
 - Ingredient name is required.
 - Ingredient name maximum: 150 characters.
@@ -639,6 +643,10 @@ Exactly one value is required. Default to "Not specified".
 ### 11.6 Categories
 
 All controlled categories are required. Categories with "Not specified" options may default to that value.
+
+> **Amended after MVP:** controlled categories are now optional. A category
+> left unset is stored as `NULL` and shown as "—". The title is the only
+> required field on a recipe. See README → "Working on this codebase".
 
 ### 11.7 Image
 
@@ -1574,6 +1582,11 @@ Acceptance criteria:
 **US-03: Add a recipe**
 
 As a user, I want to add a recipe so that it can be used in future meal plans.
+
+> **Amended after MVP:** only the title is required (ingredients and all
+> category fields are optional), and a recipe can also be added by pasting a
+> source URL, which pre-fills the form. See README → "Working on this
+> codebase".
 
 Acceptance criteria:
 

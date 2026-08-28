@@ -25,4 +25,13 @@ Titles already in the database are skipped (case-insensitive), so the
 script is safe to re-run after corrections. Inserts go through the
 `create_recipe_with_ingredients` transaction, one recipe per call.
 
+## Ingredient backfill (separate, later pass)
+
+`ingredient-scrape-report.json` here is the output of
+`scripts/populate-ingredients-from-source.mjs`, a one-off that scraped
+ingredient lists for recipes already in the library that had a `source_url`
+but no ingredient rows. It uses the same schema.org extraction as the app's
+"add recipe from URL" feature (`lib/recipes/import.ts`). Unrelated to the
+bulk import above; see that script's header for usage.
+
 This directory is throwaway — delete it once the import is done.
