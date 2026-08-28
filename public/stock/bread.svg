@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Loaf of bread">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="298" rx="150" ry="24" fill="#e3e0d8"/>
+  <rect x="70" y="232" width="260" height="20" rx="10" fill="#b98a5b"/>
+  <path d="M110 232c0-46 30-74 90-74s90 28 90 74Z" fill="#c89a63"/>
+  <path d="M110 232c0-46 30-74 90-74s90 28 90 74Z" fill="none" stroke="#a97f4e" stroke-width="4"/>
+  <g stroke="#a97f4e" stroke-width="6" stroke-linecap="round">
+    <path d="M150 178l-14 34"/>
+    <path d="M188 168l-14 44"/>
+    <path d="M226 168l-14 44"/>
+    <path d="M262 178l-12 34"/>
+  </g>
+  <path d="M300 214l40-6 4 16-40 8Z" fill="#e7d3ab"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bowl of curry">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <path d="M70 210a130 130 0 0 0 260 0Z" fill="#ffffff"/>
+  <ellipse cx="200" cy="210" rx="130" ry="34" fill="#c9764f"/>
+  <ellipse cx="200" cy="206" rx="118" ry="28" fill="#d98c4f"/>
+  <circle cx="165" cy="205" r="15" fill="#8a5a34"/>
+  <circle cx="235" cy="212" r="13" fill="#8a5a34"/>
+  <circle cx="205" cy="198" r="11" fill="#b06a3c"/>
+  <path d="M150 200q10-14 24-4M232 196q12-10 22 2" stroke="#5f7a52" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <ellipse cx="200" cy="188" rx="42" ry="16" fill="#f3ede1"/>
+  <path d="M180 150c-6-18 6-30 0-44M210 150c-6-18 6-30 0-44" stroke="#c9c6bd" stroke-width="6" stroke-linecap="round" fill="none" opacity=".8"/>
+</svg>

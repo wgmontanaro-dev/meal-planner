@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Tacos">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <ellipse cx="200" cy="250" rx="146" ry="26" fill="#ffffff"/>
+  <g>
+    <path d="M96 244c0-46 34-84 76-84v84Z" fill="#e8c060"/>
+    <path d="M110 200c30-10 44 4 62 0-4 20-40 30-62 30Z" fill="#6f8a5c"/>
+    <circle cx="140" cy="214" r="9" fill="#c9764f"/>
+    <circle cx="160" cy="228" r="7" fill="#b23c2e"/>
+  </g>
+  <g>
+    <path d="M304 244c0-46-34-84-76-84v84Z" fill="#e8c060"/>
+    <path d="M290 200c-30-10-44 4-62 0 4 20 40 30 62 30Z" fill="#6f8a5c"/>
+    <circle cx="260" cy="214" r="9" fill="#c9764f"/>
+    <circle cx="240" cy="228" r="7" fill="#b23c2e"/>
+  </g>
+</svg>

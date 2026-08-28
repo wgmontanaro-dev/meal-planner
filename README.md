@@ -5,60 +5,80 @@ recipe library, and generating shopping lists. Built for one couple, with a
 single shared password rather than individual accounts. See `SPEC.md` for
 the full product and implementation specification.
 
-**Build status:** Stages 1–3 complete (Foundation, Recipe core, Calendar
-core). The recipe library and the meal calendar — including month
-navigation, the mobile agenda and desktop grid, recipe/manual meal
-assignment, and slot replace/remove — are implemented. `npx tsc --noEmit`,
-`npm run lint` and `npm run build` all pass. Manual browser verification of
-Stage 3 (assign/replace/remove a meal, month navigation, and in particular
-that deleting a recipe assigned to a meal is blocked with the exact
-SPEC.md section 14.3 message) was left for the user to run themselves and
-had not been confirmed as of this note. Retention rules (Stage 4) and the
-shopping list (Stage 5) are not yet implemented; all months, past and
-future, are currently navigable without restriction.
+**Status: MVP complete.** All six build stages in `SPEC.md` section 32
+(Foundation, Recipe core, Calendar core, Retention, Shopping list, Images
+and hardening) are implemented, plus a round of post-spec enhancements
+(see "Working on this codebase" below). `npx tsc --noEmit`, `npm run lint`,
+`npm run build` and `npm test` all pass.
 
-## Next: starting Stage 4 (Retention)
+Spec scope, in brief:
 
-Read this section before starting Stage 4, then delete it once Stage 4 is
-under way — it is a one-time transition note, not ongoing documentation
-(the rest of this README should stay current instead).
+- **Recipe library** — CRUD, six controlled-category filters, ingredient
+  editor, source links, deletion blocked while a recipe is planned.
+- **Calendar** — mobile agenda / desktop grid, Meal 1 & Meal 2 per day,
+  recipe or manual entries, month navigation.
+- **Retention** — boundary = first day of the current Europe/London month
+  minus three calendar months; idempotent cleanup of expired entries on
+  every meal-plan mutation and on the recipe-deletion path; edits to
+  expired dates rejected; backward navigation floored at the boundary.
+- **Shopping list** — a "Generate shopping list" dialogue on the Calendar
+  page feeds an occurrence-grouped, print-friendly `/shopping-list` page
+  with copy-to-clipboard.
+- **Images** — server-validated (JPEG/PNG/WebP, ≤5 MB) upload / replace /
+  remove against a private Supabase Storage bucket; short-lived signed URLs
+  for a thumbnail and an enlarged preview; storage-object cleanup on image
+  removal and recipe deletion.
 
-**Scope** (SPEC.md section 32, detailed in sections 19, 24.4 and 30.5):
+## Working on this codebase
 
-- Implement the retention-boundary calculation: first day of the current
-  calendar month minus three calendar months, using the Europe/London
-  calendar date. `getCurrentMonthInLondon()` and `shiftMonth()` in
-  `lib/dates/calendar.ts` already exist and should be reused/composed for
-  this rather than duplicating month arithmetic.
-- Implement idempotent cleanup that deletes meal-plan entries earlier than
-  the boundary (SPEC.md section 19.3–19.4). Recipes, ingredients and
-  recipe images must never be touched by this process. `cleanupExpiredMealPlans()`
-  is listed in SPEC.md section 24.4 but does not exist yet — this is the
-  stage to add it, in `lib/meal-plans/actions.ts` alongside the other
-  meal-plan operations.
-- Decide and implement a housekeeping trigger point (SPEC.md section
-  19.4 gives three acceptable options: during authenticated calendar
-  access, during meal-plan mutations, or a deployment-supported scheduled
-  task — avoid a standalone long-running worker). This wasn't decided
-  during Stage 3 planning; use plan mode to pick one with the user before
-  implementing.
-- Prevent modifications to expired dates and disable/explain backward
-  navigation past the boundary (SPEC.md section 19.5). Note:
-  `components/calendar/month-navigation.tsx` currently allows unlimited
-  backward navigation (`YEAR_RANGE = 10` with no floor) — this will need a
-  lower bound wired to the retention boundary.
-- Verify future plans are unaffected or expiring only as their dates pass
-  the boundary (SPEC.md section 19.6).
-- Add boundary and year-transition automated tests (SPEC.md section 30.5),
-  using a controllable clock. **No test runner is installed yet** — set up
-  Vitest as part of this stage, since these are the first tests in the
-  project. `lib/dates/calendar.ts`'s `getTodayIsoDateLondon()` currently
-  calls `new Date()` directly with no injection point; it will need a way
-  to accept or be overridden with a fixed "now" for tests to control the
-  clock (SPEC.md section 30.5 explicitly requires this, including
-  year-boundary cases such as the current month being January).
+`SPEC.md` is the authority on _what_ each feature should do — read the
+relevant section before changing feature behaviour. Everything in it is
+built. The following was added **after** the spec was met; keep it in mind
+so a change doesn't undo it:
 
-**Established conventions (Stages 1–3) — keep following these:**
+- **Visual design.** The UI was reskinned to a Material-3 design produced in
+  [Stitch](https://stitch.withgoogle.com); the raw exports are kept in
+  `stitch/` for reference. The palette and fonts (Work Sans body / Literata
+  headings, via `next/font`) live as CSS variables in `app/globals.css`;
+  `--terracotta` and `--primary-container` are extra tokens beyond the
+  shadcn set. `components/ui/button.tsx` defaults to a pill radius and adds
+  a `terracotta` variant. New UI should match this system — warm surface,
+  sage-green primary, terracotta accent, pill buttons, `rounded-xl` cards —
+  not the stock neutral shadcn look.
+- **Recipe quick-view.** "View recipe" in the calendar's meal-slot dialog
+  opens the recipe **inline** (dialog mode `"view-recipe"` →
+  `RecipeQuickView` → `RecipeDetailView`), not a navigation. Data comes
+  from `getRecipeForModal` in `lib/recipes/actions.ts`. `RecipeDetailView`
+  is the single read-only recipe renderer, shared with `/recipes/[id]` —
+  change recipe presentation there, once.
+- **Stock illustrations.** Recipes with no uploaded image show one of 15
+  bundled SVGs (`public/stock/`), chosen by `lib/recipes/stock-image.ts`
+  from title keywords → cuisine → a hash of the recipe id.
+- **Recipe library views.** `/recipes` has a **list** (default) / **card**
+  toggle (`RecipeViewToggle`, state in `?view=`). `RecipeResults` (client)
+  adds an instant title search over the loaded rows; `RecipeTable` (client)
+  adds per-column sort and filter, also client-side. The URL-param
+  `RecipeFilters` still drives the server query and is shared with card
+  view — the layers compose with AND.
+- **Bulk import.** `scripts/import-recipes.mjs` + `import/` load a reviewed
+  JSON array of recipes via the `create_recipe_with_ingredients` RPC. The
+  live database was seeded this way from the owner's ~80 Apple Notes
+  recipes; **its category fields (`cuisine`, `prepTimeCategory`, …) are
+  best-guesses, not authoritative.** `import/` is throwaway.
+
+**Verify a change with** `npm test && npx tsc --noEmit && npm run lint &&
+npm run build`, then a manual browser pass (`npm run dev`). Note: automated
+agents in some harnesses cannot screenshot `@base-ui/react` dialogs — the
+calendar meal-slot flow and recipe form/preview dialogs need checking in a
+real browser.
+
+**Not covered by automated tests** (verify by hand): the Storage
+round-trip against a real bucket, `window.print()` output, and responsive /
+end-to-end behaviour (SPEC.md section 30.7 is a manual checklist).
+
+## Conventions
+
+Established across the build — keep following these:
 
 - Server actions: `"use server"` at the top of `lib/<domain>/actions.ts`,
   exporting only async functions; state/filter types and `initial*State`
@@ -87,13 +107,23 @@ under way — it is a one-time transition note, not ongoing documentation
 - Complex forms and short action menus alike currently reuse one shared
   full-screen-on-mobile / centred-on-desktop dialogue class,
   `FORM_DIALOG_CONTENT_CLASS` in `components/shared/dialog-classes.ts`.
+- Colours, radii and fonts are CSS variables in `app/globals.css` consumed
+  through Tailwind tokens — never hard-code a hex. Use `terracotta` /
+  `primary`/`secondary` button variants rather than ad-hoc classes.
+- State that should be shareable or survive a refresh goes in the URL
+  (`?view=`, the recipe filter params); ephemeral interactive state (search
+  text, a table's column sort) is plain client `useState`.
+- Read-only recipe rendering is centralised in
+  `components/recipes/recipe-detail-view.tsx` (detail page + calendar
+  quick-view). Multi-step dialog bodies switch on a `mode` string rather
+  than nesting dialogs — see `components/calendar/meal-slot-dialog.tsx`.
 
 ## Tech stack
 
 - [Next.js](https://nextjs.org) (App Router), TypeScript in strict mode
 - Tailwind CSS v4 and [shadcn/ui](https://ui.shadcn.com)
-- [Supabase](https://supabase.com) Postgres for persistence, Supabase
-  Storage for recipe images (added in a later stage)
+- [Supabase](https://supabase.com) Postgres for persistence and Supabase
+  Storage (private bucket) for recipe images
 - [Zod](https://zod.dev) for server-side validation
 - [jose](https://github.com/panva/jose) for signed session cookies
 
@@ -123,7 +153,7 @@ cp .env.local.example .env.local
 | `SESSION_SECRET` | Random secret used to sign the session cookie. Generate one with `openssl rand -base64 48`. Use a different value per environment. |
 | `SUPABASE_URL` | Your Supabase project URL, from Project Settings → API. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key, from Project Settings → API. This is a privileged secret: it is read only in server-side code and must never be exposed to the browser. |
-| `SUPABASE_STORAGE_BUCKET` | Name of the Storage bucket used for recipe images. The bucket itself is created in a later build stage. |
+| `SUPABASE_STORAGE_BUCKET` | Name of the private Storage bucket that holds recipe images (default `recipe-images`). Create it as described in "Set up storage" below. |
 
 `.env.local` is gitignored and must never be committed.
 
@@ -158,10 +188,26 @@ library, as required by the specification.
 
 ## 4. Set up storage
 
-Recipe image upload is implemented in a later build stage. When it is
-added, create a private Storage bucket in Supabase named to match
-`SUPABASE_STORAGE_BUCKET` (default `recipe-images`) and this README will be
-updated with the exact configuration required.
+Recipe images live in a **private** Supabase Storage bucket. Create it once
+per project:
+
+1. Supabase dashboard → **Storage** → **New bucket**.
+2. Name it exactly `SUPABASE_STORAGE_BUCKET` (default `recipe-images`).
+3. Leave **Public bucket** **off** — the app serves images through
+   short-lived signed URLs generated server-side with the service-role key.
+4. Optional but recommended: set the bucket file-size limit to **5 MB** and
+   allowed MIME types to `image/jpeg, image/png, image/webp` to mirror the
+   server-side checks in `lib/validation/image.ts`.
+5. Optional: enable **Storage → Image Transformations** for the project. The
+   app requests resized renditions for thumbnails and the enlarged preview;
+   if transformations are unavailable it falls back to serving the original
+   object, which still works but downloads more data.
+
+No Storage RLS policies are required: all access goes through the
+service-role client on the server, never directly from the browser.
+
+Local development with `supabase start` picks the bucket up automatically
+from `supabase/config.toml`.
 
 ## 5. Run the app locally
 
@@ -178,13 +224,41 @@ to `/login`. Sign in with the password configured in `APP_SHARED_PASSWORD`.
 npm run lint       # ESLint
 npx tsc --noEmit   # Type-check (strict mode)
 npm run build      # Production build
+npm test           # Vitest (run once); npm run test:watch to watch
 ```
 
-No automated test suite exists yet. This was deferred by deliberate choice
-through Stage 3 and will be set up (Vitest) at the start of Stage 4, where
-the retention rules' controllable-clock test requirements make it
-unavoidable. Until then, each stage is verified manually against a live
-Supabase project and the running app in a browser.
+The Vitest suite was introduced in Stage 4 for the retention rules, whose
+boundary and year-transition cases (SPEC.md section 30.5) need a
+controllable clock — `getTodayIsoDateLondon()` and its callers take an
+optional `now: Date`. Current coverage:
+
+- `lib/dates/calendar.test.ts` — retention boundary arithmetic,
+  London-vs-UTC month resolution, the expiry predicate.
+- `lib/meal-plans/retention.test.ts` — `cleanupExpiredMealPlans` issues a
+  single boundary-scoped delete, never touches recipes, is idempotent, and
+  swallows errors.
+- `lib/shopping-list/build.test.ts` — occurrence grouping, manual-meal
+  exclusion, date/slot and ingredient ordering, quantity formatting, the
+  plain-text output, and the range schema (SPEC.md section 30.6).
+- `lib/shopping-list/actions.test.ts` — `generateShoppingList` queries the
+  range with inclusive bounds and `entry_type = recipe`, and rejects an
+  out-of-retention or inverted range without touching the database.
+- `lib/validation/image.test.ts` — MIME/size validation and
+  `buildImageStoragePath` (per-recipe prefix, random UUID name, mime-derived
+  extension; never the client filename).
+- `lib/images/actions.test.ts` — `uploadRecipeImage` rejects unsupported
+  files before any I/O, stores the object then the reference (and rolls the
+  object back if the reference write fails); `removeRecipeImage` clears all
+  three columns then deletes the object; `replaceRecipeImage` deletes the
+  previous object only after the new one is stored and referenced.
+- `lib/recipes/stock-image.test.ts` — the fallback-illustration picker:
+  title keyword beats cuisine fallback, cuisine used when the title has no
+  signal, and a signal-less recipe still gets a stable, evenly-spread pick.
+
+Everything else — including the storage round-trip against a real bucket,
+`window.print()` output, and the client-side table sort/filter and library
+view toggle — is verified manually against a live Supabase project and the
+running app in a browser.
 
 ## Deployment (Vercel)
 
@@ -207,28 +281,44 @@ demonstration recipes or meal plans.
 
 ```
 app/
+  globals.css       Design tokens (colours, radii) + print styles
+  layout.tsx        Root layout; loads Work Sans + Literata via next/font
   login/            Public password screen
-  (app)/            Route group sharing the authenticated layout and nav
+  (app)/            Route group: sidebar (desktop) / bottom-nav (mobile) layout
     calendar/        Meal calendar: month view, agenda/grid, slot dialogs
-    recipes/         Recipe library, detail, add/edit
+    recipes/         Library (list default / card views), detail, add/edit
+    shopping-list/   Occurrence-grouped, print-friendly shopping list
 components/
   auth/             Login form
-  calendar/         Calendar view, month navigation, meal-slot dialog
-  recipes/          Recipe cards/table, form dialog, filters, category select
-  shared/           Navigation and other cross-cutting UI
-  ui/               shadcn/ui primitives
+  calendar/         Calendar view, month nav, meal-slot dialog (incl. recipe
+                    quick-view), shopping-list date dialog
+  recipes/          Card grid + sortable/filterable table + view toggle +
+                    search wrapper, form dialog, filters, detail view,
+                    image thumbnail/preview
+  shopping-list/    Copy-to-clipboard / print controls
+  shared/           Primary nav, nav links, dialog classes
+  ui/               shadcn/ui primitives (base-nova on @base-ui/react)
 lib/
   auth/             Session creation/validation, login/logout server actions
   constants/        Environment variable access, controlled category values
   database/         Supabase client and row/domain types
-  dates/            Europe/London calendar-month helpers
+  dates/            Europe/London calendar-month + retention-boundary helpers
+  images/           Recipe-image upload/replace/remove actions + signed-URL helper
   meal-plans/       Meal-plan server actions and form/picker types
-  recipes/          Recipe server actions, form/filter types
-  validation/       Zod schemas (recipe, meal plan)
+  recipes/          Recipe server actions, form/filter types, stock-image picker
+  shopping-list/    Shopping-list server action + pure assembly/formatting
+  validation/       Zod schemas (recipe, meal plan, shopping list, image)
+public/
+  stock/            15 bundled recipe illustrations (fallback when no upload)
+scripts/
+  import-recipes.mjs  Bulk recipe importer (reads a JSON array, calls the RPC)
+import/             Throwaway: reviewed recipe JSON + import notes (see its README)
+stitch/             Reference: the Stitch design exports the UI was built from
 supabase/
   migrations/       SQL migrations, applied in filename order
 proxy.ts             Next.js 16 "proxy" (formerly middleware): redirects
                      unauthenticated requests away from protected routes
+vitest.config.mts    Node-environment test config; suite lives in lib/**/*.test.ts
 ```
 
 ## Assumptions made where the specification left an implementation detail
@@ -258,3 +348,66 @@ unspecified
   `(meal_date, slot)` unique constraint via a single Supabase call, rather
   than a Postgres RPC function, since a single-statement upsert is already
   atomic and needs no additional multi-statement transaction logic.
+- Retention housekeeping (SPEC.md section 19.4) runs on every meal-plan
+  mutation (`setRecipeMeal` / `setManualMeal` / `removeMeal`). Because the
+  `meal_plan_entries.recipe_id` foreign key is `on delete restrict`, the
+  same `cleanupExpiredMealPlans()` also runs at the start of `getRecipeUsage`
+  and `deleteRecipe` so an expired entry can never block a recipe deletion
+  (SPEC.md section 19.3). No scheduled task or long-running worker is used.
+- The retention boundary is compared as `"YYYY-MM-DD"` string ordering
+  (`isExpiredDate`), which is exact for zero-padded ISO dates and avoids
+  reintroducing `Date` timezone drift.
+- The shopping list is its own route (`/shopping-list?start=…&end=…`) rather
+  than an in-dialogue result, so `window.print()` and an `@media print`
+  block in `app/globals.css` (hiding `nav[aria-label="Primary"]` and any
+  `[data-print-hidden]` control) give the print-friendly layout SPEC.md
+  section 20.8 requires without portal-stacking gymnastics. The Calendar
+  dialogue only collects and validates the date range, then navigates.
+- Shopping-list assembly (`lib/shopping-list/build.ts`) is a pure function
+  over already-fetched rows — grouping by occurrence, filtering out manual
+  meals, and sorting by date/slot then stored ingredient order — so the
+  SPEC.md section 30.6 cases are unit-tested without a database.
+- Recipe images: JPEG/PNG/WebP only, 5 MB maximum — both enforced
+  server-side by MIME type and byte size (`lib/validation/image.ts`).
+  Objects are stored at `recipeId/<uuid>.<ext>`; the client-supplied
+  filename is kept only as display metadata, never as a path. The image is
+  validated **before** the recipe create/update transaction, and uploaded
+  **after** it commits, so a bad file blocks the whole save and a failed
+  optional upload never rolls back a saved recipe (SPEC.md sections 11.7,
+  13.5). Replace uploads-then-repoints-then-deletes-old; a failure before
+  the repoint leaves the old image intact (SPEC.md section 21.2).
+- Images are served only through 1-hour signed URLs minted server-side with
+  the service-role key; the bucket is private and has no RLS policies
+  because the browser never touches Storage directly. Client-side image
+  resizing is not done — "resize where practical" (SPEC.md 11.7) is left to
+  the optional Supabase image-transformation renditions, with the size cap
+  as the hard guarantee.
+- Recipes without an uploaded image show a bundled illustration instead of a
+  bare placeholder. `lib/recipes/stock-image.ts` picks one of 15 SVGs in
+  `public/stock/` deterministically from the recipe's title keywords, then
+  cuisine, then a hash of its id (so a signal-less library still varies).
+  Swapping the SVGs for photos of the same names needs no code change.
+- The recipe library defaults to a list/table view (`?view=card` for the
+  grid). Server-side filtering (`RecipeFilters`, URL params) narrows the
+  query; the title search (`RecipeResults`) and the table's per-column
+  sort + filter (`RecipeTable`) then operate client-side over the loaded
+  rows. Column filter options are the distinct values present in the
+  already-filtered data, not the full enum.
+
+## Security notes
+
+- **One shared secret.** There are no user accounts; `APP_SHARED_PASSWORD`
+  gates everything. The session is a signed (HS256, `jose`) cookie holding
+  no personal data; `SESSION_SECRET` must differ per environment.
+- **Server-only privilege.** `SUPABASE_SERVICE_ROLE_KEY` is read exclusively
+  in server code (`lib/database/client.ts` is `import "server-only"`).
+  Authorisation is enforced in the application layer: every server action
+  and data read calls `requireSession()` first, and `proxy.ts` redirects
+  unauthenticated navigations to `/calendar`, `/recipes`, `/shopping-list`.
+- **Storage.** Private bucket, server-side MIME + size validation,
+  unguessable object names, signed-URL reads only, best-effort object
+  cleanup on image removal and recipe deletion (failures logged, never
+  surfaced — SPEC.md 21.4).
+- **Input.** All writes go through Zod schemas (`lib/validation/`); recipe
+  and ingredient writes use Postgres transactional functions; meal-plan
+  slots upsert against a unique `(meal_date, slot)` constraint.

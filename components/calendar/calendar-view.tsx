@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   formatAgendaDate,
   getTodayIsoDateLondon,
@@ -39,6 +41,7 @@ function SlotButton({
   onSelect: (selected: SelectedSlot) => void;
 }) {
   const label = slot === 1 ? "Meal 1" : "Meal 2";
+  const captionColor = slot === 1 ? "text-primary" : "text-terracotta";
   const isEmpty = !entry;
 
   return (
@@ -50,15 +53,27 @@ function SlotButton({
           ? `${label}, empty — add a meal`
           : `${label}, ${entryLabel(entry)} — view or change`
       }
-      className={
+      className={cn(
+        "group/slot flex w-full flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors",
         isEmpty
-          ? "w-full truncate rounded-md border border-dashed border-border px-2 py-1 text-left text-xs text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-          : "w-full truncate rounded-md border border-border bg-muted px-2 py-1 text-left text-xs font-medium hover:bg-muted/70"
-      }
+          ? "border-2 border-dashed border-border hover:border-primary"
+          : "border border-border bg-card hover:border-primary"
+      )}
       title={isEmpty ? undefined : entryLabel(entry)}
     >
-      <span className="block text-[0.65rem] font-normal text-muted-foreground">{label}</span>
-      {isEmpty ? "Add meal" : <span className="truncate">{entryLabel(entry)}</span>}
+      <span className={cn("text-[0.6rem] font-semibold tracking-wide uppercase", captionColor)}>
+        {label}
+      </span>
+      {isEmpty ? (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover/slot:text-primary">
+          <Plus className="size-3" aria-hidden="true" />
+          Add meal
+        </span>
+      ) : (
+        <span className="line-clamp-2 text-xs font-semibold text-foreground group-hover/slot:text-primary">
+          {entryLabel(entry)}
+        </span>
+      )}
     </button>
   );
 }
@@ -76,11 +91,10 @@ function AgendaRow({
 }) {
   return (
     <li
-      className={
-        isToday
-          ? "flex flex-col gap-2 rounded-lg border-2 border-primary p-3"
-          : "flex flex-col gap-2 rounded-lg border border-border p-3"
-      }
+      className={cn(
+        "flex flex-col gap-2 rounded-xl border bg-background p-3",
+        isToday ? "border-2 border-primary" : "border-border"
+      )}
     >
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{formatAgendaDate(mealDate)}</span>
@@ -113,14 +127,15 @@ function GridCell({
 }) {
   return (
     <div
-      className={
-        isToday
-          ? "flex min-h-28 flex-col gap-1 rounded-lg border-2 border-primary p-2"
-          : "flex min-h-28 flex-col gap-1 rounded-lg border border-border p-2"
-      }
+      className={cn(
+        "flex min-h-32 flex-col gap-1.5 rounded-xl border bg-background p-2.5",
+        isToday ? "border-2 border-primary" : "border-border"
+      )}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{dayNumber}</span>
+        <span className={cn("text-sm font-medium", !isToday && "text-muted-foreground")}>
+          {dayNumber}
+        </span>
         {isToday ? (
           <span className="rounded-full bg-primary px-1.5 py-0.5 text-[0.6rem] font-medium text-primary-foreground">
             Today
@@ -179,9 +194,12 @@ export function CalendarView({
 
       {/* Tablet and desktop: seven-column Monday-first grid. */}
       <div className="hidden sm:block">
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-3">
           {WEEKDAY_HEADINGS.map((heading) => (
-            <div key={heading} className="text-center text-xs font-medium text-muted-foreground">
+            <div
+              key={heading}
+              className="text-center text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+            >
               {heading}
             </div>
           ))}

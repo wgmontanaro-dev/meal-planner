@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Smoothie">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="312" rx="120" ry="22" fill="#e3e0d8"/>
+  <path d="M150 120h100l-14 176a10 10 0 0 1-10 9h-42a10 10 0 0 1-10-9Z" fill="#ffffff"/>
+  <path d="M154 150h92l-4 50h-84Z" fill="#c9764f"/>
+  <path d="M150 200h100l-6 76h-88Z" fill="#8fae6f"/>
+  <path d="M152 250h96l-4 40a10 10 0 0 1-10 9h-68a10 10 0 0 1-10-9Z" fill="#617a69"/>
+  <rect x="214" y="70" width="12" height="70" rx="6" transform="rotate(12 220 105)" fill="#904c2f"/>
+  <circle cx="176" cy="126" r="12" fill="#b23c2e"/>
+  <path d="M176 116c10-2 12 6 12 6-8 4-14-2-12-6Z" fill="#5f7a52"/>
+</svg>

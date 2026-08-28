@@ -10,15 +10,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MONTH_NAMES, formatMonthYear, getCurrentMonthInLondon, shiftMonth } from "@/lib/dates/calendar";
+import {
+  MONTH_NAMES,
+  formatMonthYear,
+  getCurrentMonthInLondon,
+  getRetentionBoundaryMonth,
+  shiftMonth,
+} from "@/lib/dates/calendar";
 
-// No product-defined navigation limit in Stage 3 (SPEC.md section 15.2) —
-// the retention boundary arrives in Stage 4.
 const YEAR_RANGE = 10;
 
-function buildYearOptions(selectedYear: number): number[] {
+/** True when {year, month} is strictly before the retention boundary month. */
+function isBeforeMonth(year: number, month: number, boundary: { year: number; month: number }): boolean {
+  return year < boundary.year || (year === boundary.year && month < boundary.month);
+}
+
+function buildYearOptions(selectedYear: number, boundaryYear: number): number[] {
   const { year: currentYear } = getCurrentMonthInLondon();
-  const start = Math.min(currentYear - YEAR_RANGE, selectedYear);
+  // Never offer a year wholly before the retention boundary (SPEC.md
+  // section 19.5); still include selectedYear if a stale URL lands earlier.
+  const start = Math.min(Math.max(currentYear - YEAR_RANGE, boundaryYear), selectedYear);
   const end = Math.max(currentYear + YEAR_RANGE, selectedYear);
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
@@ -28,8 +39,22 @@ export function MonthNavigation({ year, month }: { year: number; month: number }
   const { year: todayYear, month: todayMonth } = getCurrentMonthInLondon();
   const isCurrentMonth = year === todayYear && month === todayMonth;
 
+  const boundary = getRetentionBoundaryMonth();
+  const previous = shiftMonth(year, month, -1);
+  // Backward navigation stops once the previous month would fall into
+  // expired history (SPEC.md section 19.5).
+  const backwardDisabled = isBeforeMonth(previous.year, previous.month, boundary);
+
+  // Clamp any navigation target to the retention boundary (SPEC.md section
+  // 19.5) so the month/year selects can't jump into expired history.
   function go(nextYear: number, nextMonth: number) {
-    router.push(`/calendar?year=${nextYear}&month=${nextMonth}`);
+    let targetYear = nextYear;
+    let targetMonth = nextMonth;
+    if (isBeforeMonth(targetYear, targetMonth, boundary)) {
+      targetYear = boundary.year;
+      targetMonth = boundary.month;
+    }
+    router.push(`/calendar?year=${targetYear}&month=${targetMonth}`);
   }
 
   function goToPreviousMonth() {
@@ -47,16 +72,35 @@ export function MonthNavigation({ year, month }: { year: number; month: number }
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" size="icon" aria-label="Previous month" onClick={goToPreviousMonth}>
-        <ChevronLeftIcon aria-hidden="true" />
-      </Button>
-      <Button variant="outline" size="icon" aria-label="Next month" onClick={goToNextMonth}>
-        <ChevronRightIcon aria-hidden="true" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={goToToday} disabled={isCurrentMonth}>
-        Today
-      </Button>
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-1 rounded-full border border-border bg-muted p-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Previous month"
+          onClick={goToPreviousMonth}
+          disabled={backwardDisabled}
+          title={
+            backwardDisabled
+              ? "Meal history is kept for the current month and the previous three months."
+              : undefined
+          }
+        >
+          <ChevronLeftIcon aria-hidden="true" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={goToToday}
+          disabled={isCurrentMonth}
+          className="px-3"
+        >
+          Today
+        </Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Next month" onClick={goToNextMonth}>
+          <ChevronRightIcon aria-hidden="true" />
+        </Button>
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         <Select
@@ -79,7 +123,7 @@ export function MonthNavigation({ year, month }: { year: number; month: number }
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {buildYearOptions(year).map((optionYear) => (
+            {buildYearOptions(year, boundary.year).map((optionYear) => (
               <SelectItem key={optionYear} value={String(optionYear)}>
                 {optionYear}
               </SelectItem>

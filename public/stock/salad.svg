@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bowl of salad">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <path d="M74 208a126 126 0 0 0 252 0Z" fill="#ffffff"/>
+  <ellipse cx="200" cy="208" rx="126" ry="30" fill="#eef1e9"/>
+  <path d="M150 205c-14-22 4-44 24-30 8-20 34-16 36 4 20-6 30 18 12 30Z" fill="#6f8a5c"/>
+  <path d="M226 210c-10-20 12-34 28-20 14-8 28 10 16 24Z" fill="#5f7a52"/>
+  <circle cx="176" cy="214" r="12" fill="#c9764f"/>
+  <circle cx="214" cy="220" r="10" fill="#d98c4f"/>
+  <circle cx="150" cy="220" r="8" fill="#8fae6f"/>
+  <circle cx="244" cy="206" r="9" fill="#8fae6f"/>
+</svg>

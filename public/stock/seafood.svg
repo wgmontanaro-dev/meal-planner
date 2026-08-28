@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Fish dish">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <ellipse cx="200" cy="212" rx="150" ry="52" fill="#ffffff"/>
+  <ellipse cx="200" cy="210" rx="120" ry="40" fill="#f6f3ec"/>
+  <path d="M120 210c30-34 96-34 126 0-30 34-96 34-126 0Z" fill="#cf9f86"/>
+  <path d="M246 210l34-20v40Z" fill="#cf9f86"/>
+  <circle cx="150" cy="204" r="6" fill="#3c3a36"/>
+  <path d="M170 210h60M175 200h48M175 220h48" stroke="#b98d76" stroke-width="4"/>
+  <circle cx="118" cy="238" r="16" fill="#e8d24a"/>
+  <path d="M118 222v32M102 238h32" stroke="#c9b83e" stroke-width="4"/>
+</svg>

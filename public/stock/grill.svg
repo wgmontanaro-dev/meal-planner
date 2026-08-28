@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Grilled burger">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <ellipse cx="200" cy="256" rx="146" ry="26" fill="#ffffff"/>
+  <path d="M124 176c0-30 34-52 76-52s76 22 76 52Z" fill="#d9a15a"/>
+  <circle cx="164" cy="150" r="4" fill="#f0e6cf"/>
+  <circle cx="200" cy="142" r="4" fill="#f0e6cf"/>
+  <circle cx="236" cy="150" r="4" fill="#f0e6cf"/>
+  <rect x="118" y="176" width="164" height="16" rx="8" fill="#6f8a5c"/>
+  <rect x="112" y="190" width="176" height="22" rx="11" fill="#7a4a2c"/>
+  <path d="M118 212c14 8 36 8 40-2 10 12 40 12 48 0 10 12 40 12 50 0 6 8 20 8 26 2v6H118Z" fill="#c9764f"/>
+  <path d="M124 236c0-16 34-24 76-24s76 8 76 24Z" fill="#d9a15a"/>
+</svg>

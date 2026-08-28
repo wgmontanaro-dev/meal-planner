@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bowl of soup">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <path d="M78 206a122 122 0 0 0 244 0Z" fill="#ffffff"/>
+  <ellipse cx="200" cy="206" rx="122" ry="28" fill="#d98c4f"/>
+  <ellipse cx="200" cy="202" rx="108" ry="22" fill="#e6a35c"/>
+  <circle cx="176" cy="200" r="7" fill="#b06a3c"/>
+  <circle cx="220" cy="205" r="6" fill="#b06a3c"/>
+  <circle cx="200" cy="196" r="5" fill="#f0d8ad"/>
+  <path d="M300 150l26-40 12 8-24 40Z" fill="#c9c6bd"/>
+  <ellipse cx="322" cy="150" rx="14" ry="9" fill="#c9c6bd"/>
+  <path d="M182 168c-6-16 6-26 0-40M212 168c-6-16 6-26 0-40" stroke="#c9c6bd" stroke-width="6" stroke-linecap="round" fill="none" opacity=".8"/>
+</svg>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heirloom - Recipes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&amp;family=Work+Sans:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface": "#1a1c1a",
+                        "secondary-fixed": "#ffdbce",
+                        "surface-container": "#efeeeb",
+                        "surface-container-highest": "#e3e2e0",
+                        "surface-container-high": "#e9e8e5",
+                        "on-primary-fixed": "#082013",
+                        "tertiary": "#70573f",
+                        "secondary-container": "#fea683",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#370e00",
+                        "inverse-primary": "#b2cdb9",
+                        "surface": "#faf9f6",
+                        "secondary-fixed-dim": "#ffb599",
+                        "on-primary-fixed-variant": "#344c3d",
+                        "outline-variant": "#c2c8c1",
+                        "tertiary-container": "#8a7055",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdcbd",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#291805",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2f312f",
+                        "on-tertiary-container": "#fffbff",
+                        "primary-fixed-dim": "#b2cdb9",
+                        "tertiary-fixed-dim": "#e1c1a2",
+                        "outline": "#737973",
+                        "surface-variant": "#e3e2e0",
+                        "surface-container-low": "#f4f3f1",
+                        "background": "#faf9f6",
+                        "on-tertiary-fixed-variant": "#59422b",
+                        "surface-dim": "#dbdad7",
+                        "on-surface-variant": "#424843",
+                        "primary-fixed": "#cee9d5",
+                        "on-primary-container": "#f6fff5",
+                        "surface-bright": "#faf9f6",
+                        "primary-container": "#617a69",
+                        "on-primary": "#ffffff",
+                        "primary": "#496251",
+                        "on-background": "#1a1c1a",
+                        "surface-tint": "#4b6454",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-secondary-fixed-variant": "#73351a",
+                        "on-secondary-container": "#78391e",
+                        "secondary": "#904c2f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "margin-mobile": "16px",
+                        "base": "4px",
+                        "xl": "48px",
+                        "gutter": "16px",
+                        "xs": "8px",
+                        "lg": "32px",
+                        "margin-desktop": "40px",
+                        "sm": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Work Sans"],
+                        "body-md": ["Work Sans"],
+                        "display-lg-mobile": ["Literata"],
+                        "display-lg": ["Literata"],
+                        "caption": ["Work Sans"],
+                        "label-md": ["Work Sans"],
+                        "headline-md": ["Literata"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for filter bar */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col md:flex-row">
+<!-- Desktop SideNavBar -->
+<nav class="hidden md:flex flex-col p-md h-screen sticky left-0 top-0 border-r border-outline-variant dark:border-outline bg-surface-container-low shadow-sm docked w-64 z-50">
+<!-- Header -->
+<div class="mb-lg flex items-center gap-sm px-4 py-2">
+<div>
+<h1 class="font-headline-md font-bold text-primary dark:text-primary-fixed-dim">Heirloom</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Household Planner</p>
+</div>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 space-y-2">
+<!-- Calendar (Inactive) -->
+<a class="flex items-center gap-sm text-on-surface-variant dark:text-outline px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-md text-label-md">Calendar</span>
+</a>
+<!-- Recipes (Active) -->
+<a class="flex items-center gap-sm bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-xl px-4 py-3 scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book" data-weight="fill">menu_book</span>
+<span class="font-label-md text-label-md">Recipes</span>
+</a>
+</div>
+<!-- Footer Navigation -->
+<div class="mt-auto space-y-2 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-sm text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+<span class="font-label-md text-label-md">Shopping List</span>
+</a>
+<a class="flex items-center gap-sm text-on-surface-variant px-4 py-3 hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col min-h-screen">
+<!-- Header Section -->
+<header class="px-margin-desktop py-lg flex justify-between items-end border-b border-surface-variant bg-surface sticky top-0 z-40">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Recipes</h1>
+</div>
+<button class="bg-primary hover:bg-surface-tint text-on-primary font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+                Add recipe
+            </button>
+</header>
+<!-- Content Area -->
+<div class="p-margin-desktop flex-1 flex flex-col gap-lg">
+<!-- Filter Bar (Horizontal, scrollable on smaller screens if needed) -->
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-outline-variant text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+                    Prep Time
+                    <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-outline-variant text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]">restaurant</span>
+                    Cuisine
+                    <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-outline-variant text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]">kitchen</span>
+                    Storage Type
+                    <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-outline-variant text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]">eco</span>
+                    Diet Type
+                    <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 border-2 border-outline-variant text-on-surface-variant rounded-full font-label-md text-label-md hover:bg-surface-container-low transition-colors whitespace-nowrap">
+<span class="material-symbols-outlined text-[18px]">child_care</span>
+                    Child-friendly
+                </button>
+<!-- Clear Filters (hidden by default, show when active) -->
+<button class="ml-auto flex items-center gap-2 px-4 py-2 text-primary rounded-full font-label-md text-label-md hover:bg-primary-container transition-colors whitespace-nowrap">
+                    Clear all
+                </button>
+</div>
+<!-- Recipe Grid (Bento style / modern masonry-ish feel) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-variant overflow-hidden hover:border-primary transition-colors group cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col">
+<div class="aspect-video w-full bg-surface-container relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A close-up, top-down shot of a warm bowl of creamy lentil dhal, garnished with fresh cilantro and a swirl of coconut milk, set on a rustic wooden table. The lighting is soft and natural, emphasizing the rich yellow and orange hues of the dish in a bright, modern light-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqL53WSMrQG2ZugOfLb8c0zCfap5rnf_uHmzzwxwWtU6-0sqyOIJEN9s3-NF-PJ-YXB5sHVFChbT5adpL3XlTue7Rpma0zs-N_gMxo6hnGVzoB9_qTvJ7T7PbUp_M-uK8ArIGbH3ROavAQD8JeCmxHdia-49DVgVvybr-RdAZMkWjIXWDjc4YE24hjA47DcK_GoyNiYczA_8cmz1YkbtqhlbpfNNbuxtXYChI4wyvc19gv9-sIMOfX"/>
+<div class="absolute top-3 right-3 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 text-on-surface shadow-sm">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption font-semibold">30 mins</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex items-start justify-between gap-2 mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface line-clamp-2">Creamy Lentil Dhal</h3>
+<button class="text-on-surface-variant hover:text-primary mt-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="bg-primary-container text-on-primary-container px-2 py-1 rounded font-caption text-caption">Vegetarian</span>
+<span class="bg-surface-container-high text-on-surface px-2 py-1 rounded font-caption text-caption">Indian</span>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-variant flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span> Kid Friendly
+                            </span>
+<a class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1" href="#">
+                                View source <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-variant overflow-hidden hover:border-primary transition-colors group cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col">
+<div class="aspect-video w-full bg-surface-container relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A beautifully roasted whole chicken resting on a bed of root vegetables in a cast iron skillet. The skin is golden-brown and crispy, illuminated by warm, inviting kitchen light that highlights the tactile textures of the food within a bright, modern culinary setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmZFm6sdEpzIin0Q-llhvDlyjkLdUeiguRmWivWRlVGp9uVxBy62DwFDhTt1Ovxkz8fIWRChPEGT-VwH3QE6yNOQ5KLZlQnWX7nV5iSXoR9jEmaPp6-dER2vg_0S_z3uSw7YldswLTcrCiv2rkOyIp8uYQRFgigt2SYUqXceLQK_geZ5wUxSQ0Fem31MRbYedC76IioxRDE-J-EjmsWzwlWoDFLWsZnF11eEje1X6-Waqx8mvzscNN"/>
+<div class="absolute top-3 right-3 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 text-on-surface shadow-sm">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption font-semibold">1hr 20m</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex items-start justify-between gap-2 mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface line-clamp-2">Sunday Roast Chicken</h3>
+<button class="text-on-surface-variant hover:text-primary mt-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="bg-surface-container-high text-on-surface px-2 py-1 rounded font-caption text-caption">British</span>
+<span class="bg-secondary-container text-on-secondary-container px-2 py-1 rounded font-caption text-caption">High Protein</span>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-variant flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">kitchen</span> Fridge 3 days
+                            </span>
+<a class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1" href="#">
+                                View source <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="bg-surface-container-lowest rounded-xl border border-surface-variant overflow-hidden hover:border-primary transition-colors group cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col">
+<div class="aspect-video w-full bg-surface-container relative overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A vibrant green avocado and spinach smoothie bowl topped with fresh berries and chia seeds, placed on a light marble countertop. The scene is bright and refreshing, utilizing a soft light-mode aesthetic to evoke feelings of health and calm organization." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8ULRWzh5M5mN1K3_gJRK9AyRKfchGhngq-PfH1lgItfj0VM0OtU82sdAbFHjJrDQRe83f8mMQj2ayhn4EpmF-aIfECoeiY6dI1a9DkZp8IaKe1vEYZ_yFg5IcOZD6GqZ6EmFUsc-lsL8uOdOFCJpfaUupWt6deNEUMTQxSc0XdhkEVCtNP2CbD-v5lYmMrDNOTc36Ezd39Bmn6Y-PGhE3ubHFUxXtP2seKJvGoF-IeMXVO4T4bz4H"/>
+<div class="absolute top-3 right-3 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 text-on-surface shadow-sm">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption font-semibold">10 mins</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col">
+<div class="flex items-start justify-between gap-2 mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface line-clamp-2">Green Energy Smoothie Bowl</h3>
+<button class="text-on-surface-variant hover:text-primary mt-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="bg-primary-container text-on-primary-container px-2 py-1 rounded font-caption text-caption">Vegan</span>
+<span class="bg-surface-container-high text-on-surface px-2 py-1 rounded font-caption text-caption">Breakfast</span>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-variant flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">ac_unit</span> Freeze 1m
+                            </span>
+<a class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1" href="#">
+                                View source <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</article>
+</div>
+<!-- Empty State (Hidden by default) -->
+<div class="hidden flex-col items-center justify-center py-xl mt-xl text-center" id="empty-state">
+<div class="w-24 h-24 bg-surface-container rounded-full flex items-center justify-center mb-6 shadow-sm border border-surface-variant">
+<span class="material-symbols-outlined text-display-lg text-outline">menu_book</span>
+</div>
+<h2 class="font-display-lg-mobile text-display-lg-mobile text-on-surface mb-2">No recipes yet</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mx-auto mb-6">Start building your household's digital cookbook. Add your favorite meals to plan them later.</p>
+<button class="bg-primary hover:bg-surface-tint text-on-primary font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    Add your first recipe
+                </button>
+</div>
+</div>
+</main>
+</body></html>

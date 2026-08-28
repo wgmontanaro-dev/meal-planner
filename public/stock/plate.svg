@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Meal on a plate">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <circle cx="200" cy="205" r="120" fill="#ffffff"/>
+  <circle cx="200" cy="205" r="120" fill="none" stroke="#e0ded6" stroke-width="4"/>
+  <circle cx="200" cy="205" r="86" fill="#f4f2ec"/>
+  <path d="M172 176c22-14 40-14 58 0 12 20 6 44-16 52-24 8-46-6-50-26-2-10 0-20 8-26Z" fill="#c9764f"/>
+  <path d="M182 188c14-6 26-4 34 6" stroke="#a95f3c" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M64 150v50a10 10 0 0 0 20 0v-50M74 150v110" stroke="#b7b4ab" stroke-width="7" stroke-linecap="round"/>
+  <path d="M326 150c-14 0-14 34 0 34v76" stroke="#b7b4ab" stroke-width="7" stroke-linecap="round" fill="none"/>
+</svg>

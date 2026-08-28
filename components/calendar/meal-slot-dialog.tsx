@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FilterFields, type DraftFilters } from "@/components/recipes/filter-fields";
+import { RecipeQuickView } from "@/components/calendar/recipe-quick-view";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
 import { setManualMeal, setRecipeMeal, removeMeal } from "@/lib/meal-plans/actions";
 import { initialMealSlotState, type RecipeSummary } from "@/lib/meal-plans/types";
@@ -27,7 +29,7 @@ import {
 } from "@/lib/constants/categories";
 import type { MealPlanEntryWithRecipe } from "@/lib/database/types";
 
-type DialogMode = "choose" | "actions" | "pick-recipe" | "manual-edit";
+type DialogMode = "choose" | "actions" | "pick-recipe" | "manual-edit" | "view-recipe";
 
 export type SelectedSlot = {
   mealDate: string;
@@ -52,6 +54,7 @@ function RecipePickerList({
 }) {
   const [state, formAction, pending] = useActionState(setRecipeMeal, initialMealSlotState);
   const [filters, setFilters] = useState<DraftFilters>({});
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (state.status === "success") {
@@ -71,12 +74,39 @@ function RecipePickerList({
     );
   }
 
-  const visibleRecipes = recipes.filter((recipe) => matchesFilters(recipe, filters));
+  const query = search.trim().toLowerCase();
+  const visibleRecipes = recipes.filter(
+    (recipe) =>
+      matchesFilters(recipe, filters) &&
+      (query === "" || recipe.title.toLowerCase().includes(query))
+  );
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="mealDate" value={mealDate} />
       <input type="hidden" name="slot" value={slot} />
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="recipe-picker-search">Search by title</Label>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="recipe-picker-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              // Don't submit the form when pressing Enter in the search box.
+              if (event.key === "Enter") event.preventDefault();
+            }}
+            placeholder="e.g. curry"
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <FilterFields
         filters={filters}
@@ -91,7 +121,7 @@ function RecipePickerList({
 
       {visibleRecipes.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">
-          No recipes match these filters.
+          No recipes match your search and filters.
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -254,6 +284,10 @@ function DialogBody({
     );
   }
 
+  if (mode === "view-recipe" && entry?.recipeId) {
+    return <RecipeQuickView recipeId={entry.recipeId} onBack={() => setMode("actions")} />;
+  }
+
   // mode === "actions"
   if (!entry) {
     return null;
@@ -262,7 +296,7 @@ function DialogBody({
   if (entry.entryType === "recipe") {
     return (
       <div className="flex flex-col gap-2">
-        <Button render={<Link href={`/recipes/${entry.recipeId}`} />} variant="outline">
+        <Button variant="outline" onClick={() => setMode("view-recipe")}>
           View recipe
         </Button>
         <Button variant="outline" onClick={() => setMode("choose")}>

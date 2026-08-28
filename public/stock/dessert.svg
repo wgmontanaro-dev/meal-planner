@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Slice of cake">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <ellipse cx="200" cy="250" rx="140" ry="30" fill="#ffffff"/>
+  <path d="M132 246l68-96 68 96Z" fill="#e7d3ab"/>
+  <path d="M150 220h100M162 196h76" stroke="#d98c4f" stroke-width="12"/>
+  <path d="M132 246l68-96 68 96Z" fill="none" stroke="#c9a56f" stroke-width="4"/>
+  <path d="M168 150c0-14 32-14 32 0" fill="none" stroke="#b23c2e" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="200" cy="150" r="10" fill="#b23c2e"/>
+</svg>

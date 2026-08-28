@@ -4,6 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/require-session";
 import { getSupabaseClient } from "@/lib/database/client";
+import { cleanupExpiredMealPlans } from "@/lib/meal-plans/actions";
+import {
+  deleteRecipeImageObject,
+  removeRecipeImage,
+  replaceRecipeImage,
+  uploadRecipeImage,
+} from "@/lib/images/actions";
+import { signRecipeImageUrls } from "@/lib/images/urls";
+import type { RecipeImageUrls } from "@/lib/images/types";
 import {
   toIngredient,
   toRecipe,
@@ -13,6 +22,7 @@ import {
   type RecipeWithIngredients,
 } from "@/lib/database/types";
 import { recipeInputSchema, type IngredientInput } from "@/lib/validation/recipe";
+import { validateImageFile } from "@/lib/validation/image";
 import type {
   RecipeFilters,
   RecipeFormState,
@@ -62,6 +72,21 @@ export async function listRecipes(filters?: RecipeFilters): Promise<Recipe[]> {
   return (data as RecipeRow[]).map(toRecipe);
 }
 
+/**
+ * Fetches a recipe plus signed image URLs for the calendar's quick-view
+ * modal (SPEC.md sections 16.2, 12.8). Returns null if the recipe is gone.
+ */
+export async function getRecipeForModal(recipeId: string): Promise<{
+  recipe: RecipeWithIngredients;
+  imageUrls: RecipeImageUrls | null;
+} | null> {
+  const recipe = await getRecipe(recipeId);
+  if (!recipe) {
+    return null;
+  }
+  return { recipe, imageUrls: await signRecipeImageUrls(recipe.imageStoragePath) };
+}
+
 /** Fetches a single recipe with its ingredients in stored order, or null if it does not exist. */
 export async function getRecipe(recipeId: string): Promise<RecipeWithIngredients | null> {
   await requireSession();
@@ -105,6 +130,10 @@ export async function getRecipe(recipeId: string): Promise<RecipeWithIngredients
  */
 export async function getRecipeUsage(recipeId: string): Promise<{ isUsed: boolean }> {
   await requireSession();
+
+  // Expired meal-plan entries must not count as "in use" (SPEC.md section
+  // 19.3); clear them before checking.
+  await cleanupExpiredMealPlans();
 
   const supabase = getSupabaseClient();
   const { count, error } = await supabase
@@ -194,6 +223,24 @@ function toIngredientPayload(ingredients: IngredientInput[]) {
   }));
 }
 
+/** A newly selected image file on the form, or null if none was chosen. */
+function readNewImageFile(formData: FormData): File | null {
+  const value = formData.get("image");
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
+/**
+ * Validates a newly chosen image before the recipe transaction runs, so an
+ * unsupported or oversized file blocks the whole save and nothing is
+ * persisted (SPEC.md section 13.5). Returns a field error keyed as "image".
+ */
+function checkImageBeforeSave(formData: FormData): { image?: string } {
+  const file = readNewImageFile(formData);
+  if (!file) return {};
+  const validation = validateImageFile({ type: file.type, size: file.size });
+  return validation.ok ? {} : { image: validation.message };
+}
+
 export async function createRecipe(
   _prevState: RecipeFormState,
   formData: FormData
@@ -201,13 +248,16 @@ export async function createRecipe(
   await requireSession();
 
   const { values, result } = parseRecipeForm(formData);
+  const imageError = checkImageBeforeSave(formData);
 
-  if (!result.success) {
-    const { fieldErrors, ingredientErrors } = collectFieldErrors(result.error.issues);
+  if (!result.success || imageError.image) {
+    const { fieldErrors, ingredientErrors } = result.success
+      ? { fieldErrors: {} as Record<string, string>, ingredientErrors: {} as Record<number, string> }
+      : collectFieldErrors(result.error.issues);
     return {
       status: "error",
       message: "The recipe could not be saved. Check the highlighted fields.",
-      fieldErrors,
+      fieldErrors: { ...fieldErrors, ...imageError },
       ingredientErrors,
       values,
     };
@@ -238,8 +288,17 @@ export async function createRecipe(
     };
   }
 
+  const createdRecipeId = newRecipeId as string;
+
+  // The recipe transaction has committed; an optional image failure here
+  // must not undo it (SPEC.md section 11.7 — the image is optional). The
+  // helper logs its own errors.
+  if (readNewImageFile(formData)) {
+    await uploadRecipeImage(createdRecipeId, formData);
+  }
+
   revalidatePath("/recipes");
-  redirect(`/recipes/${newRecipeId as string}`);
+  redirect(`/recipes/${createdRecipeId}`);
 }
 
 export async function updateRecipe(
@@ -250,13 +309,16 @@ export async function updateRecipe(
   await requireSession();
 
   const { values, result } = parseRecipeForm(formData);
+  const imageError = checkImageBeforeSave(formData);
 
-  if (!result.success) {
-    const { fieldErrors, ingredientErrors } = collectFieldErrors(result.error.issues);
+  if (!result.success || imageError.image) {
+    const { fieldErrors, ingredientErrors } = result.success
+      ? { fieldErrors: {} as Record<string, string>, ingredientErrors: {} as Record<number, string> }
+      : collectFieldErrors(result.error.issues);
     return {
       status: "error",
       message: "The recipe could not be saved. Check the highlighted fields.",
-      fieldErrors,
+      fieldErrors: { ...fieldErrors, ...imageError },
       ingredientErrors,
       values,
     };
@@ -288,6 +350,14 @@ export async function updateRecipe(
     };
   }
 
+  // Apply the image change after the recipe transaction commits (SPEC.md
+  // sections 21.2, 21.3). "Remove" wins over a newly chosen file.
+  if (formData.get("removeImage") === "on") {
+    await removeRecipeImage(recipeId);
+  } else if (readNewImageFile(formData)) {
+    await replaceRecipeImage(recipeId, formData);
+  }
+
   revalidatePath("/recipes");
   revalidatePath(`/recipes/${recipeId}`);
   redirect(`/recipes/${recipeId}`);
@@ -311,7 +381,20 @@ export async function deleteRecipe(
     return { status: "error", message: "The recipe could not be deleted. Try again." };
   }
 
+  // Expired meal-plan entries must never block a delete (SPEC.md section
+  // 19.3). Clearing them first also narrows the section 14.4 race window.
+  await cleanupExpiredMealPlans();
+
   const supabase = getSupabaseClient();
+
+  // Capture the image path before the row goes, so its storage object can
+  // be cleaned up afterwards (SPEC.md section 21.4).
+  const { data: existing } = await supabase
+    .from("recipes")
+    .select("image_storage_path")
+    .eq("id", recipeId)
+    .maybeSingle();
+
   const { error } = await supabase.from("recipes").delete().eq("id", recipeId);
 
   if (error) {
@@ -324,6 +407,10 @@ export async function deleteRecipe(
     }
     return { status: "error", message: "The recipe could not be deleted. Try again." };
   }
+
+  await deleteRecipeImageObject(
+    (existing as { image_storage_path: string | null } | null)?.image_storage_path ?? null
+  );
 
   revalidatePath("/recipes");
   redirect("/recipes");

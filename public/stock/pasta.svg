@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Plate of pasta">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <ellipse cx="200" cy="212" rx="150" ry="50" fill="#ffffff"/>
+  <ellipse cx="200" cy="210" rx="112" ry="36" fill="#f4e7c9"/>
+  <g stroke="#e8c878" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M128 214q26-30 72-16 40 12 74-6"/>
+    <path d="M132 224q34-22 70-8 34 12 66-10"/>
+    <path d="M140 202q30-20 62-8 34 12 58 2"/>
+  </g>
+  <ellipse cx="205" cy="206" rx="30" ry="16" fill="#b23c2e"/>
+  <circle cx="168" cy="216" r="8" fill="#5f7a52"/>
+  <circle cx="240" cy="214" r="7" fill="#5f7a52"/>
+</svg>

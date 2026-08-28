@@ -23,3 +23,7 @@ export function getSupabaseUrl(): string {
 export function getSupabaseServiceRoleKey(): string {
   return requireEnv("SUPABASE_SERVICE_ROLE_KEY");
 }
+
+export function getSupabaseStorageBucket(): string {
+  return requireEnv("SUPABASE_STORAGE_BUCKET");
+}

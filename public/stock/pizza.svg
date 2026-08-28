@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Pizza">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <circle cx="200" cy="205" r="128" fill="#e7d3ab"/>
+  <circle cx="200" cy="205" r="112" fill="#e8c060"/>
+  <circle cx="200" cy="205" r="100" fill="#d9482f"/>
+  <circle cx="200" cy="205" r="88" fill="#e8c878"/>
+  <g fill="#b23c2e">
+    <circle cx="168" cy="176" r="13"/><circle cx="238" cy="184" r="13"/>
+    <circle cx="150" cy="228" r="13"/><circle cx="222" cy="238" r="13"/><circle cx="200" cy="196" r="11"/>
+  </g>
+  <g fill="#5f7a52"><circle cx="196" cy="164" r="7"/><circle cx="164" cy="210" r="7"/><circle cx="246" cy="216" r="7"/></g>
+  <g stroke="#c9a56f" stroke-width="3" opacity=".7">
+    <path d="M200 205 200 93M200 205 296 150M200 205 296 260M200 205 200 317M200 205 104 260M200 205 104 150"/>
+  </g>
+</svg>

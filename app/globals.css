@@ -7,9 +7,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-work-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-literata), ui-serif, Georgia, serif;
+  --color-terracotta: var(--terracotta);
+  --color-terracotta-foreground: var(--terracotta-foreground);
+  --color-primary-container: var(--primary-container);
+  --color-primary-container-foreground: var(--primary-container-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +52,90 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Palette from the Stitch design (Material 3, warm sage green + terracotta).
+ * Kept as hex to match the source tokens exactly.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #faf9f6; /* surface */
+  --foreground: #1a1c1a; /* on-surface */
+  --card: #ffffff; /* surface-container-lowest */
+  --card-foreground: #1a1c1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1c1a;
+  --primary: #496251;
+  --primary-foreground: #ffffff;
+  --primary-container: #cee9d5;
+  --primary-container-foreground: #082013;
+  --secondary: #efeeeb; /* surface-container — neutral, per shadcn semantics */
+  --secondary-foreground: #1a1c1a;
+  --terracotta: #904c2f; /* M3 "secondary" accent */
+  --terracotta-foreground: #ffffff;
+  --muted: #f4f3f1; /* surface-container-low */
+  --muted-foreground: #424843; /* on-surface-variant */
+  --accent: #e9e8e5; /* surface-container-high — hover surface */
+  --accent-foreground: #1a1c1a;
+  --destructive: #ba1a1a; /* error */
+  --border: #c2c8c1; /* outline-variant */
+  --input: #c2c8c1;
+  --ring: #496251; /* primary */
+  --chart-1: #496251;
+  --chart-2: #904c2f;
+  --chart-3: #70573f;
+  --chart-4: #617a69;
+  --chart-5: #8a7055;
+  --radius: 0.5rem;
+  --sidebar: #f4f3f1;
+  --sidebar-foreground: #1a1c1a;
+  --sidebar-primary: #496251;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9e8e5;
+  --sidebar-accent-foreground: #1a1c1a;
+  --sidebar-border: #c2c8c1;
+  --sidebar-ring: #496251;
 }
 
+/*
+ * Dark palette — a plausible dark rendering of the same M3 scheme. Nothing
+ * in the app toggles the `.dark` class today, so this is a safe default
+ * rather than a designed surface.
+ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #111412;
+  --foreground: #e2e3df;
+  --card: #1a1c1a;
+  --card-foreground: #e2e3df;
+  --popover: #1a1c1a;
+  --popover-foreground: #e2e3df;
+  --primary: #b2cdb9;
+  --primary-foreground: #1c3529;
+  --primary-container: #344c3d;
+  --primary-container-foreground: #cee9d5;
+  --secondary: #2a2d2a;
+  --secondary-foreground: #e2e3df;
+  --terracotta: #ffb599;
+  --terracotta-foreground: #561f07;
+  --muted: #22251f;
+  --muted-foreground: #c2c8c1;
+  --accent: #2f322e;
+  --accent-foreground: #e2e3df;
+  --destructive: #ffb4ab;
+  --border: #424843;
+  --input: #424843;
+  --ring: #8cb096;
+  --chart-1: #b2cdb9;
+  --chart-2: #ffb599;
+  --chart-3: #e1c1a2;
+  --chart-4: #8cb096;
+  --chart-5: #d0b18f;
+  --sidebar: #1a1c1a;
+  --sidebar-foreground: #e2e3df;
+  --sidebar-primary: #b2cdb9;
+  --sidebar-primary-foreground: #1c3529;
+  --sidebar-accent: #2f322e;
+  --sidebar-accent-foreground: #e2e3df;
+  --sidebar-border: #424843;
+  --sidebar-ring: #8cb096;
 }
 
 @layer base {
@@ -126,5 +147,35 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Literata for headings, per the Stitch design. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+  }
+}
+
+/*
+ * Print-friendly shopping list (SPEC.md section 20.8): drop the app
+ * navigation and any screen-only action controls, and force plain black
+ * text on white with no decorative backgrounds. Recipe grouping, dates and
+ * meal slots are ordinary flow content and print as-is.
+ */
+@media print {
+  nav[aria-label="Primary"],
+  [data-print-hidden] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  main {
+    padding-bottom: 0 !important;
   }
 }

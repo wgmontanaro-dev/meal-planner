@@ -8,7 +8,12 @@ import {
   type MealPlanEntryRow,
   type MealPlanEntryWithRecipe,
 } from "@/lib/database/types";
-import { monthBounds, isValidYearMonth } from "@/lib/dates/calendar";
+import {
+  monthBounds,
+  isValidYearMonth,
+  getRetentionBoundaryDate,
+  isExpiredDate,
+} from "@/lib/dates/calendar";
 import {
   setManualMealSchema,
   setRecipeMealSchema,
@@ -25,6 +30,8 @@ const CHECK_VIOLATION = "23514";
 const CONFLICT_MESSAGE =
   "The selected meal slot was changed elsewhere. The calendar has been refreshed.";
 const GENERIC_MESSAGE = "The meal could not be saved. Try again.";
+const EXPIRED_DATE_MESSAGE =
+  "That date is outside the retained period — the current month and the previous three months — and can no longer be changed.";
 
 /**
  * Retrieves every meal-plan entry for a calendar month (SPEC.md section
@@ -52,6 +59,7 @@ export async function getMealPlanForMonth(
     .lte("meal_date", end);
 
   if (entriesError) {
+    console.error("getMealPlanForMonth: meal_plan_entries query failed", entriesError);
     throw new Error("Could not load the meal plan.");
   }
 
@@ -78,6 +86,27 @@ export async function getMealPlanForMonth(
   }));
 }
 
+/**
+ * Idempotently deletes meal-plan entries whose date is before the retention
+ * boundary (SPEC.md sections 19.3–19.4). Recipes, ingredients and recipe
+ * images are never touched. Invoked as a side effect of meal-plan mutations
+ * and of the recipe-deletion path; failures are logged and swallowed so a
+ * housekeeping error never surfaces to the user mid-action.
+ */
+export async function cleanupExpiredMealPlans(): Promise<void> {
+  await requireSession();
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("meal_plan_entries")
+    .delete()
+    .lt("meal_date", getRetentionBoundaryDate());
+
+  if (error) {
+    console.error("cleanupExpiredMealPlans: delete failed", error);
+  }
+}
+
 function readFieldsFromFormData(formData: FormData) {
   return {
     mealDate: String(formData.get("mealDate") ?? ""),
@@ -101,6 +130,10 @@ export async function setRecipeMeal(
     return { status: "error", message: "Choose a recipe to assign to this meal." };
   }
 
+  if (isExpiredDate(result.data.mealDate)) {
+    return { status: "error", message: EXPIRED_DATE_MESSAGE };
+  }
+
   const supabase = getSupabaseClient();
   const { error } = await supabase.from("meal_plan_entries").upsert(
     {
@@ -121,6 +154,7 @@ export async function setRecipeMeal(
     return { status: "error", message };
   }
 
+  await cleanupExpiredMealPlans();
   revalidatePath("/calendar");
   return { status: "success" };
 }
@@ -153,6 +187,10 @@ export async function setManualMeal(
     };
   }
 
+  if (isExpiredDate(result.data.mealDate)) {
+    return { status: "error", message: EXPIRED_DATE_MESSAGE };
+  }
+
   const supabase = getSupabaseClient();
   const { error } = await supabase.from("meal_plan_entries").upsert(
     {
@@ -170,6 +208,7 @@ export async function setManualMeal(
     return { status: "error", message };
   }
 
+  await cleanupExpiredMealPlans();
   revalidatePath("/calendar");
   return { status: "success" };
 }
@@ -197,6 +236,7 @@ export async function removeMeal(
     return { status: "error", message: GENERIC_MESSAGE };
   }
 
+  await cleanupExpiredMealPlans();
   revalidatePath("/calendar");
   return { status: "success" };
 }

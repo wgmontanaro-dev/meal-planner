@@ -1,0 +1,29 @@
+Notes on parsing the Apple Notes dump (2026-08-28)
+==================================================
+
+~90 lines of notes -> 82 recipe rows in recipes.json.
+
+MERGED (appeared more than once, or a sub-note of another recipe):
+- "Cherry tomato risotto" appeared twice (mobkitchen.co.uk + a reddit thread)
+  -> one row, reddit link kept in the summary.
+- "Bratwurst" appeared twice ("Barbecue: bratwurst" and "Bratwurst from
+  sausageman.co.uk" under To try) -> one row.
+- "Ramsay's mashed potato with egg yolk and Parmesan" -> folded into the
+  Shepherd's / cottage pie row (it's the topping in that note).
+
+LOW CONFIDENCE / BORDERLINE (kept, but check or delete if unwanted):
+- "Velveting chicken (marinade)" - a technique, not a meal. Has a clear
+  quantity list so it was kept as a row.
+- "Pan-fried then oven-baked chicken breast in butter" - technique note.
+- "Sauteed potatoes with garlic" - side, technique note.
+- "Lemon and herb chicken wings" (To try) - may duplicate the Nando's lemon
+  & herb drumsticks row.
+
+DROPPED:
+- Image placeholders in the notes (screenshots) - not recoverable from
+  plain text.
+
+EVERY category field is a guess. cuisine is inferred from the title;
+prepTimeCategory / storageType / dietType are defaults (mostly
+FROM_30_TO_60 / MIXED, dietType guessed from the title). Review recipes.json
+before running the importer with --apply.

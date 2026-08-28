@@ -16,8 +16,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { CategorySelect } from "@/components/recipes/category-select";
 import { IngredientEditor } from "@/components/recipes/ingredient-editor";
+import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
 import { createRecipe, updateRecipe } from "@/lib/recipes/actions";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  IMAGE_TYPE_MESSAGE,
+  MAX_IMAGE_LABEL,
+} from "@/lib/validation/image";
+import type { RecipeImageUrls } from "@/lib/images/types";
 import {
   initialRecipeFormState,
   type RecipeFormState,
@@ -90,9 +97,68 @@ const FIELD_FOCUS_ORDER = [
   "childFriendly",
   "preparationType",
   "instructions",
+  "image",
 ] as const;
 
-function FormFields({ values, state }: { values: RecipeFormValues; state: RecipeFormState }) {
+function ImageField({
+  currentImage,
+  recipeTitle,
+  error,
+}: {
+  currentImage: RecipeImageUrls | null;
+  recipeTitle: string;
+  error?: string;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-muted-foreground">Image</h3>
+
+      {currentImage ? (
+        <div className="flex items-center gap-3">
+          <RecipeImageThumbnail urls={currentImage} title={recipeTitle} size="md" />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="removeImage" className="size-4" />
+            Remove current image
+          </label>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="recipe-image">
+          {currentImage ? "Replace image" : "Upload an image"} (optional)
+        </Label>
+        <Input
+          id="recipe-image"
+          name="image"
+          type="file"
+          accept={ALLOWED_IMAGE_MIME_TYPES.join(",")}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? "recipe-image-error" : "recipe-image-hint"}
+        />
+        <p id="recipe-image-hint" className="text-xs text-muted-foreground">
+          {IMAGE_TYPE_MESSAGE} Maximum {MAX_IMAGE_LABEL}.
+        </p>
+        {error ? (
+          <p id="recipe-image-error" role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function FormFields({
+  values,
+  state,
+  currentImage,
+  recipeTitle,
+}: {
+  values: RecipeFormValues;
+  state: RecipeFormState;
+  currentImage: RecipeImageUrls | null;
+  recipeTitle: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -271,6 +337,14 @@ function FormFields({ values, state }: { values: RecipeFormValues; state: Recipe
           </p>
         ) : null}
       </section>
+
+      <Separator />
+
+      <ImageField
+        currentImage={currentImage}
+        recipeTitle={recipeTitle}
+        error={state.fieldErrors?.image}
+      />
     </div>
   );
 }
@@ -280,12 +354,16 @@ function RecipeForm({
   submitLabel,
   pendingLabel,
   values,
+  currentImage,
+  recipeTitle,
   onClose,
 }: {
   action: (state: RecipeFormState, formData: FormData) => Promise<RecipeFormState>;
   submitLabel: string;
   pendingLabel: string;
   values: RecipeFormValues;
+  currentImage: RecipeImageUrls | null;
+  recipeTitle: string;
   onClose: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, initialRecipeFormState);
@@ -293,7 +371,12 @@ function RecipeForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      <FormFields values={currentValues} state={state} />
+      <FormFields
+        values={currentValues}
+        state={state}
+        currentImage={currentImage}
+        recipeTitle={recipeTitle}
+      />
       {state.status === "error" && !state.fieldErrors ? (
         <p role="alert" className="text-sm text-destructive">
           {state.message}
@@ -343,6 +426,8 @@ export function AddRecipeFormDialog({
               submitLabel="Save recipe"
               pendingLabel="Saving…"
               values={EMPTY_VALUES}
+              currentImage={null}
+              recipeTitle=""
               onClose={() => setOpen(false)}
             />
           ) : null}
@@ -354,11 +439,13 @@ export function AddRecipeFormDialog({
 
 export function EditRecipeFormDialog({
   recipe,
+  imageUrls,
   trigger,
   open,
   onOpenChange,
 }: {
   recipe: RecipeWithIngredients;
+  imageUrls: RecipeImageUrls | null;
   trigger?: ReactElement;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -385,6 +472,8 @@ export function EditRecipeFormDialog({
               submitLabel="Save changes"
               pendingLabel="Saving…"
               values={recipeToFormValues(recipe)}
+              currentImage={imageUrls}
+              recipeTitle={recipe.title}
               onClose={() => setOpen(false)}
             />
           ) : null}

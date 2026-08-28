@@ -6,6 +6,11 @@ import type {
   StorageType,
   TernaryCategory,
 } from "@/lib/constants/categories";
+import type { Recipe } from "@/lib/database/types";
+import type { RecipeImageUrls } from "@/lib/images/types";
+
+/** A library recipe row paired with signed URLs for its image (if any). */
+export type RecipeWithImage = Recipe & { imageUrls: RecipeImageUrls | null };
 
 export type RecipeFilters = {
   prepTimeCategory?: PrepTimeCategory;

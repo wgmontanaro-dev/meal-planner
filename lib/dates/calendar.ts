@@ -13,12 +13,14 @@ const LONDON_TIME_ZONE = "Europe/London";
 
 export type YearMonth = { year: number; month: number };
 
-export function getTodayIsoDateLondon(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: LONDON_TIME_ZONE }).format(new Date());
+// `now` is injectable purely so retention tests can drive a fixed clock
+// (SPEC.md section 30.5); production callers always use the real time.
+export function getTodayIsoDateLondon(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: LONDON_TIME_ZONE }).format(now);
 }
 
-export function getCurrentMonthInLondon(): YearMonth {
-  const [year, month] = getTodayIsoDateLondon().split("-").map(Number);
+export function getCurrentMonthInLondon(now?: Date): YearMonth {
+  const [year, month] = getTodayIsoDateLondon(now).split("-").map(Number);
   return { year, month };
 }
 
@@ -54,6 +56,39 @@ function daysInMonth(year: number, month: number): number {
 
 export function monthBounds(year: number, month: number): { start: string; end: string } {
   return { start: toIsoDate(year, month, 1), end: toIsoDate(year, month, daysInMonth(year, month)) };
+}
+
+// ---------------------------------------------------------------------------
+// Retention boundary (SPEC.md section 19)
+// ---------------------------------------------------------------------------
+
+/**
+ * The {year, month} of the retention boundary: the current Europe/London
+ * calendar month shifted back three calendar months (SPEC.md section 19.2).
+ * Used to floor backward calendar navigation (SPEC.md section 19.5).
+ */
+export function getRetentionBoundaryMonth(now?: Date): YearMonth {
+  const { year, month } = getCurrentMonthInLondon(now);
+  return shiftMonth(year, month, -3);
+}
+
+/**
+ * The earliest date whose meal-plan entries are still retained: the first
+ * day of `getRetentionBoundaryMonth()` (SPEC.md section 19.2). Entries with
+ * a `meal_date` on or after this date are kept; earlier entries are expired.
+ */
+export function getRetentionBoundaryDate(now?: Date): string {
+  const { year, month } = getRetentionBoundaryMonth(now);
+  return toIsoDate(year, month, 1);
+}
+
+/**
+ * Whether a "YYYY-MM-DD" date falls before the retention boundary and is
+ * therefore expired (SPEC.md sections 19.3 and 19.5). Lexicographic string
+ * comparison is exact for zero-padded ISO dates.
+ */
+export function isExpiredDate(isoDate: string, now?: Date): boolean {
+  return isoDate < getRetentionBoundaryDate(now);
 }
 
 export function listDatesInMonth(year: number, month: number): string[] {

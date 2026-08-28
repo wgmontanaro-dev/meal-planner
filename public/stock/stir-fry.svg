@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Stir-fry in a wok">
+  <rect width="400" height="400" fill="#f1efe9"/>
+  <ellipse cx="200" cy="300" rx="150" ry="26" fill="#e3e0d8"/>
+  <path d="M78 200a122 122 0 0 0 244 0Z" fill="#4a4744"/>
+  <path d="M322 200h44" stroke="#4a4744" stroke-width="14" stroke-linecap="round"/>
+  <ellipse cx="200" cy="200" rx="122" ry="26" fill="#5b5854"/>
+  <g stroke="#e8c878" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M136 202q30-22 64-8 34 12 66-8"/>
+    <path d="M140 210q34-16 62-4 32 10 60-8"/>
+  </g>
+  <path d="M160 196l30 6-4 12-30-6Z" fill="#c9764f"/>
+  <path d="M230 200l26 8-6 12-24-8Z" fill="#6f8a5c"/>
+  <path d="M150 150l120 40" stroke="#b98a5b" stroke-width="6" stroke-linecap="round"/>
+  <path d="M158 138l120 40" stroke="#b98a5b" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Lentil Dhal",
+    "sourceUrl": "https://www.bbcgoodfood.com/recipes/spiced-carrot-lentil-soup",
+    "summaryDescription": null,
+    "instructions": null,
+    "prepTimeCategory": "FROM_30_TO_60",
+    "cuisine": "INDIAN",
+    "storageType": "MIXED",
+    "dietType": "VEGETARIAN",
+    "childFriendly": "NOT_SPECIFIED",
+    "preparationType": "NOT_SPECIFIED",
+    "ingredients": [],
+    "_source": "link",
+    "_confidence": "medium"
+  },
+  {
+    "title": "Nana's roast chicken",
+    "sourceUrl": null,
+    "summaryDescription": null,
+    "instructions": null,
+    "prepTimeCategory": "OVER_90",
+    "cuisine": "BRITISH",
+    "storageType": "FRESH",
+    "dietType": "MEAT_OR_FISH",
+    "childFriendly": "YES",
+    "preparationType": "REQUIRES_PREPARATION",
+    "ingredients": [],
+    "_source": "title-only",
+    "_confidence": "low"
+  }
+]

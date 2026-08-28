@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME, validateSessionToken } from "@/lib/auth/session";
 
-const PROTECTED_PATHS = ["/calendar", "/recipes"];
+const PROTECTED_PATHS = ["/calendar", "/recipes", "/shopping-list"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -26,5 +26,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/calendar/:path*", "/recipes/:path*"],
+  matcher: ["/calendar/:path*", "/recipes/:path*", "/shopping-list/:path*"],
 };
