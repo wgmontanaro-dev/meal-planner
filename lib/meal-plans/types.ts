@@ -22,10 +22,10 @@ export const initialMealSlotState: MealSlotState = { status: "idle" };
 export type RecipeSummary = {
   id: string;
   title: string;
-  prepTimeCategory: PrepTimeCategory;
-  cuisine: Cuisine;
-  storageType: StorageType;
-  dietType: DietType;
-  childFriendly: TernaryCategory;
-  preparationType: PreparationType;
+  prepTimeCategory: PrepTimeCategory | null;
+  cuisine: Cuisine | null;
+  storageType: StorageType | null;
+  dietType: DietType | null;
+  childFriendly: TernaryCategory | null;
+  preparationType: PreparationType | null;
 };

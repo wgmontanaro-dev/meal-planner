@@ -137,9 +137,17 @@ function RecipePickerList({
               >
                 <span className="font-medium">{recipe.title}</span>
                 <span className="flex flex-wrap gap-1">
-                  <Badge variant="outline">{PREP_TIME_LABELS[recipe.prepTimeCategory]}</Badge>
-                  <Badge variant="outline">{CUISINE_LABELS[recipe.cuisine]}</Badge>
-                  <Badge variant="outline">{DIET_TYPE_LABELS[recipe.dietType]}</Badge>
+                  {recipe.prepTimeCategory ? (
+                    <Badge variant="outline">
+                      {PREP_TIME_LABELS[recipe.prepTimeCategory]}
+                    </Badge>
+                  ) : null}
+                  {recipe.cuisine ? (
+                    <Badge variant="outline">{CUISINE_LABELS[recipe.cuisine]}</Badge>
+                  ) : null}
+                  {recipe.dietType ? (
+                    <Badge variant="outline">{DIET_TYPE_LABELS[recipe.dietType]}</Badge>
+                  ) : null}
                 </span>
               </Button>
             </li>

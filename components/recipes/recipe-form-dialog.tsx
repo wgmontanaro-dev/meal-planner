@@ -55,8 +55,8 @@ const EMPTY_VALUES: RecipeFormValues = {
   cuisine: "",
   storageType: "",
   dietType: "",
-  childFriendly: "NOT_SPECIFIED",
-  preparationType: "NOT_SPECIFIED",
+  childFriendly: "",
+  preparationType: "",
   ingredients: [{ name: "", quantity: "" }],
 };
 
@@ -66,12 +66,12 @@ export function recipeToFormValues(recipe: RecipeWithIngredients): RecipeFormVal
     summaryDescription: recipe.summaryDescription ?? "",
     sourceUrl: recipe.sourceUrl ?? "",
     instructions: recipe.instructions ?? "",
-    prepTimeCategory: recipe.prepTimeCategory,
-    cuisine: recipe.cuisine,
-    storageType: recipe.storageType,
-    dietType: recipe.dietType,
-    childFriendly: recipe.childFriendly,
-    preparationType: recipe.preparationType,
+    prepTimeCategory: recipe.prepTimeCategory ?? "",
+    cuisine: recipe.cuisine ?? "",
+    storageType: recipe.storageType ?? "",
+    dietType: recipe.dietType ?? "",
+    childFriendly: recipe.childFriendly ?? "",
+    preparationType: recipe.preparationType ?? "",
     ingredients:
       recipe.ingredients.length > 0
         ? recipe.ingredients.map((ingredient) => ({
@@ -300,7 +300,7 @@ function FormFields({
           label="Child-friendly"
           options={TERNARY_CATEGORIES}
           labels={CHILD_FRIENDLY_LABELS}
-          defaultValue={values.childFriendly || "NOT_SPECIFIED"}
+          defaultValue={values.childFriendly || undefined}
           error={state.fieldErrors?.childFriendly}
         />
         <CategorySelect
@@ -309,7 +309,7 @@ function FormFields({
           label="Preparation type"
           options={PREPARATION_TYPES}
           labels={PREPARATION_TYPE_LABELS}
-          defaultValue={values.preparationType || "NOT_SPECIFIED"}
+          defaultValue={values.preparationType || undefined}
           error={state.fieldErrors?.preparationType}
         />
       </section>

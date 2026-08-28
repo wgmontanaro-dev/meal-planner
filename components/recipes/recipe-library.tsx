@@ -3,6 +3,7 @@
 import { Refrigerator } from "lucide-react";
 import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import {
+  categoryLabel,
   CUISINE_LABELS,
   DIET_TYPE_LABELS,
   STORAGE_TYPE_LABELS,
@@ -53,19 +54,25 @@ function RecipeCard({
           {recipe.title}
         </button>
 
-        <div className="flex flex-wrap gap-1">
-          <span className="rounded bg-primary-container px-1.5 py-0.5 text-[0.65rem] font-medium text-primary-container-foreground">
-            {DIET_TYPE_LABELS[recipe.dietType]}
-          </span>
-          <span className="rounded bg-secondary px-1.5 py-0.5 text-[0.65rem] text-secondary-foreground">
-            {CUISINE_LABELS[recipe.cuisine]}
-          </span>
-        </div>
+        {recipe.dietType || recipe.cuisine ? (
+          <div className="flex flex-wrap gap-1">
+            {recipe.dietType ? (
+              <span className="rounded bg-primary-container px-1.5 py-0.5 text-[0.65rem] font-medium text-primary-container-foreground">
+                {DIET_TYPE_LABELS[recipe.dietType]}
+              </span>
+            ) : null}
+            {recipe.cuisine ? (
+              <span className="rounded bg-secondary px-1.5 py-0.5 text-[0.65rem] text-secondary-foreground">
+                {CUISINE_LABELS[recipe.cuisine]}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-1 text-[0.7rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Refrigerator className="size-3" aria-hidden="true" />
-            {STORAGE_TYPE_LABELS[recipe.storageType]}
+            {categoryLabel(STORAGE_TYPE_LABELS, recipe.storageType)}
           </span>
           <SourceLink sourceUrl={recipe.sourceUrl} />
         </div>

@@ -94,7 +94,6 @@ function normalise(raw) {
 }
 
 const NUMERIC = /^[\d.,/]+$/;
-const RANGE = /^\d+(?:\.\d+)?(?:\s*[-–—]\s*|\s+to\s+)\d+(?:\.\d+)?$/;
 
 function isQuantityToken(tok, atStart) {
   const t = tok.toLowerCase().replace(/[),.]+$/, "");

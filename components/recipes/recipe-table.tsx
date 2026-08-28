@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  categoryLabel,
   CUISINE_LABELS,
   DIET_TYPE_LABELS,
   PREP_TIME_LABELS,
@@ -39,31 +40,41 @@ const PREP_ORDER = new Map(PREP_TIME_CATEGORIES.map((value, index) => [value, in
 
 const COLUMNS: Column[] = [
   { key: "title", label: "Recipe", text: (r) => r.title, filter: "text" },
-  { key: "cuisine", label: "Cuisine", text: (r) => CUISINE_LABELS[r.cuisine], filter: "select" },
+  {
+    key: "cuisine",
+    label: "Cuisine",
+    text: (r) => categoryLabel(CUISINE_LABELS, r.cuisine),
+    filter: "select",
+  },
   {
     key: "prepTimeCategory",
     label: "Prep time",
-    text: (r) => PREP_TIME_LABELS[r.prepTimeCategory],
-    sortKey: (r) => PREP_ORDER.get(r.prepTimeCategory) ?? 99,
+    text: (r) => categoryLabel(PREP_TIME_LABELS, r.prepTimeCategory),
+    sortKey: (r) => (r.prepTimeCategory ? PREP_ORDER.get(r.prepTimeCategory) ?? 99 : 99),
     filter: "select",
   },
-  { key: "dietType", label: "Diet", text: (r) => DIET_TYPE_LABELS[r.dietType], filter: "select" },
+  {
+    key: "dietType",
+    label: "Diet",
+    text: (r) => categoryLabel(DIET_TYPE_LABELS, r.dietType),
+    filter: "select",
+  },
   {
     key: "storageType",
     label: "Storage",
-    text: (r) => STORAGE_TYPE_LABELS[r.storageType],
+    text: (r) => categoryLabel(STORAGE_TYPE_LABELS, r.storageType),
     filter: "select",
   },
   {
     key: "childFriendly",
     label: "Child-friendly",
-    text: (r) => CHILD_FRIENDLY_LABELS[r.childFriendly],
+    text: (r) => categoryLabel(CHILD_FRIENDLY_LABELS, r.childFriendly),
     filter: "select",
   },
   {
     key: "preparationType",
     label: "Preparation",
-    text: (r) => PREPARATION_TYPE_LABELS[r.preparationType],
+    text: (r) => categoryLabel(PREPARATION_TYPE_LABELS, r.preparationType),
     filter: "select",
   },
   {
@@ -251,19 +262,23 @@ export function RecipeTable({
                     {recipe.title}
                   </button>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">{CUISINE_LABELS[recipe.cuisine]}</td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {PREP_TIME_LABELS[recipe.prepTimeCategory]}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">{DIET_TYPE_LABELS[recipe.dietType]}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  {STORAGE_TYPE_LABELS[recipe.storageType]}
+                  {categoryLabel(CUISINE_LABELS, recipe.cuisine)}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {CHILD_FRIENDLY_LABELS[recipe.childFriendly]}
+                  {categoryLabel(PREP_TIME_LABELS, recipe.prepTimeCategory)}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {PREPARATION_TYPE_LABELS[recipe.preparationType]}
+                  {categoryLabel(DIET_TYPE_LABELS, recipe.dietType)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {categoryLabel(STORAGE_TYPE_LABELS, recipe.storageType)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {categoryLabel(CHILD_FRIENDLY_LABELS, recipe.childFriendly)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {categoryLabel(PREPARATION_TYPE_LABELS, recipe.preparationType)}
                 </td>
                 <td className="px-3 py-2">
                   {recipe.sourceUrl ? (

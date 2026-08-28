@@ -36,6 +36,9 @@ export function CategorySelect({
   error?: string;
 }) {
   const errorId = `${id}-error`;
+  const placeholder = clearable
+    ? `Any ${label.toLowerCase()}`
+    : `Choose ${label.toLowerCase()}`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -57,7 +60,16 @@ export function CategorySelect({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
         >
-          <SelectValue placeholder={`Choose ${label.toLowerCase()}`} />
+          {/* Base UI renders the raw stored value here unless given a
+              formatter, which is why an unmapped select shows e.g.
+              "FROM_15_TO_30" instead of "15 to 30 minutes". */}
+          <SelectValue placeholder={placeholder}>
+            {(selected) => {
+              const key = selected == null ? "" : String(selected);
+              if (key === "" || key === ANY_VALUE) return placeholder;
+              return labels[key] ?? key;
+            }}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {clearable ? <SelectItem value={ANY_VALUE}>Any {label.toLowerCase()}</SelectItem> : null}

@@ -51,6 +51,13 @@ describe("pickStockImageId", () => {
     expect(picks.size).toBeGreaterThan(5);
   });
 
+  it("handles a recipe with no cuisine or diet set", () => {
+    const id = pickStockImageId(
+      recipe({ title: "Mystery dish", cuisine: null, dietType: null })
+    );
+    expect(STOCK_IMAGE_IDS).toContain(id);
+  });
+
   it("only ever returns ids that have a matching file", () => {
     for (const cuisine of ["INDIAN", "ITALIAN", "JAPANESE", "OTHER", "FRENCH"] as const) {
       const id = pickStockImageId(recipe({ cuisine, title: "" }));

@@ -52,6 +52,15 @@ export const instructionsSchema = optionalTrimmedText(
   `Instructions must be ${RECIPE_INSTRUCTIONS_MAX_LENGTH} characters or fewer.`
 );
 
+/** Treats "" / whitespace / missing as "not chosen" before the enum check. */
+const emptyToNull = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
+/** An optional controlled category: a known value, or null when left blank. */
+function optionalCategory<T extends readonly [string, ...string[]]>(values: T) {
+  return z.preprocess(emptyToNull, z.enum(values).nullable());
+}
+
 export const ingredientInputSchema = z.object({
   name: trimmedText(
     INGREDIENT_NAME_MAX_LENGTH,
@@ -70,21 +79,13 @@ export const recipeInputSchema = z.object({
   summaryDescription: summaryDescriptionSchema,
   sourceUrl: sourceUrlSchema,
   instructions: instructionsSchema,
-  prepTimeCategory: z.enum(PREP_TIME_CATEGORIES, {
-    message: "Choose a preparation time.",
-  }),
-  cuisine: z.enum(CUISINES, { message: "Choose a cuisine." }),
-  storageType: z.enum(STORAGE_TYPES, { message: "Choose a storage type." }),
-  dietType: z.enum(DIET_TYPES, { message: "Choose a diet type." }),
-  childFriendly: z.enum(TERNARY_CATEGORIES, {
-    message: "Choose a child-friendly value.",
-  }),
-  preparationType: z.enum(PREPARATION_TYPES, {
-    message: "Choose a preparation type.",
-  }),
-  ingredients: z
-    .array(ingredientInputSchema)
-    .min(1, "At least one ingredient is required."),
+  prepTimeCategory: optionalCategory(PREP_TIME_CATEGORIES),
+  cuisine: optionalCategory(CUISINES),
+  storageType: optionalCategory(STORAGE_TYPES),
+  dietType: optionalCategory(DIET_TYPES),
+  childFriendly: optionalCategory(TERNARY_CATEGORIES),
+  preparationType: optionalCategory(PREPARATION_TYPES),
+  ingredients: z.array(ingredientInputSchema),
 });
 
 export type RecipeInput = z.infer<typeof recipeInputSchema>;

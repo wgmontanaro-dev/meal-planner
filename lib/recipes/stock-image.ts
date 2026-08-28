@@ -84,8 +84,8 @@ function hashString(value: string): number {
 export type RecipeImageContext = {
   id: string;
   title: string;
-  cuisine: Cuisine;
-  dietType: DietType;
+  cuisine: Cuisine | null;
+  dietType: DietType | null;
 };
 
 /**
@@ -103,10 +103,12 @@ export function pickStockImageId(recipe: RecipeImageContext): StockImageId {
     if (pattern.test(recipe.title)) add(id, 10);
   }
 
-  const cuisinePick = CUISINE_FALLBACK[recipe.cuisine];
+  const cuisinePick = recipe.cuisine ? CUISINE_FALLBACK[recipe.cuisine] : undefined;
   if (cuisinePick) add(cuisinePick, 4);
 
-  for (const id of DIET_NUDGE[recipe.dietType]) add(id, 1);
+  if (recipe.dietType) {
+    for (const id of DIET_NUDGE[recipe.dietType]) add(id, 1);
+  }
 
   let best: StockImageId | null = null;
   let bestScore = 0;

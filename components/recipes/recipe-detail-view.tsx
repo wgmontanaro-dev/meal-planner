@@ -1,6 +1,7 @@
 import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import { Separator } from "@/components/ui/separator";
 import {
+  categoryLabel,
   CUISINE_LABELS,
   DIET_TYPE_LABELS,
   PREP_TIME_LABELS,
@@ -64,27 +65,27 @@ export function RecipeDetailView({
       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <div>
           <dt className="text-muted-foreground">Preparation time</dt>
-          <dd>{PREP_TIME_LABELS[recipe.prepTimeCategory]}</dd>
+          <dd>{categoryLabel(PREP_TIME_LABELS, recipe.prepTimeCategory)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Cuisine</dt>
-          <dd>{CUISINE_LABELS[recipe.cuisine]}</dd>
+          <dd>{categoryLabel(CUISINE_LABELS, recipe.cuisine)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Storage type</dt>
-          <dd>{STORAGE_TYPE_LABELS[recipe.storageType]}</dd>
+          <dd>{categoryLabel(STORAGE_TYPE_LABELS, recipe.storageType)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Diet type</dt>
-          <dd>{DIET_TYPE_LABELS[recipe.dietType]}</dd>
+          <dd>{categoryLabel(DIET_TYPE_LABELS, recipe.dietType)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Child-friendly</dt>
-          <dd>{CHILD_FRIENDLY_LABELS[recipe.childFriendly]}</dd>
+          <dd>{categoryLabel(CHILD_FRIENDLY_LABELS, recipe.childFriendly)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Preparation</dt>
-          <dd>{PREPARATION_TYPE_LABELS[recipe.preparationType]}</dd>
+          <dd>{categoryLabel(PREPARATION_TYPE_LABELS, recipe.preparationType)}</dd>
         </div>
       </div>
 

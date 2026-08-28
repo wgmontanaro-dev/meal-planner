@@ -118,6 +118,17 @@ export const PREPARATION_TYPE_LABELS: Record<PreparationType, string> = {
   NOT_SPECIFIED: "Not specified",
 };
 
+/**
+ * Display label for a controlled-category value. Categories are optional on a
+ * recipe (only the title is required), so an unset value renders as an em dash.
+ */
+export function categoryLabel<T extends string>(
+  labels: Record<T, string>,
+  value: T | null | undefined
+): string {
+  return value == null ? "—" : labels[value];
+}
+
 /** Narrows an arbitrary string (e.g. from a URL search param) to a known category value, or undefined if it doesn't match. */
 export function parseCategoryValue<T extends string>(
   allowedValues: readonly T[],

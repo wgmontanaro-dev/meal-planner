@@ -176,6 +176,13 @@ function readFormValues(formData: FormData): RecipeFormValues {
 function parseRecipeForm(formData: FormData) {
   const values = readFormValues(formData);
 
+  // A recipe may have no ingredients at all; the editor still always renders
+  // one empty row, so drop rows the user left completely blank before
+  // validating. A row with a quantity but no name is kept so it still errors.
+  const ingredients = values.ingredients.filter(
+    (row) => row.name.trim() !== "" || row.quantity.trim() !== ""
+  );
+
   return {
     values,
     result: recipeInputSchema.safeParse({
@@ -189,7 +196,7 @@ function parseRecipeForm(formData: FormData) {
       dietType: values.dietType,
       childFriendly: values.childFriendly,
       preparationType: values.preparationType,
-      ingredients: values.ingredients,
+      ingredients,
     }),
   };
 }
