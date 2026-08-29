@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   assembleShoppingList,
+  formatEntryDateRange,
+  formatEntrySlotLabel,
   formatIngredientLine,
   formatShoppingListText,
 } from "./build";
@@ -9,7 +11,11 @@ import { shoppingListRangeSchema } from "@/lib/validation/shopping-list";
 type Entry = Parameters<typeof assembleShoppingList>[0][number];
 
 function recipeEntry(mealDate: string, slot: 1 | 2, recipeId: string): Entry {
-  return { mealDate, slot, entryType: "recipe", recipeId };
+  return { mealDate, slot, entryType: "recipe", recipeId, manualTitle: null };
+}
+
+function manualEntry(mealDate: string, slot: 1 | 2, manualTitle: string): Entry {
+  return { mealDate, slot, entryType: "manual", recipeId: null, manualTitle };
 }
 
 const CURRY = "11111111-1111-1111-1111-111111111111";
@@ -33,56 +39,153 @@ const ingredients = new Map<string, { name: string; quantity: string | null; sor
 ]);
 
 describe("assembleShoppingList (SPEC 20.3 / 20.4 / 20.6)", () => {
-  it("ignores manual meals and keeps only recipe entries", () => {
-    const result = assembleShoppingList(
-      [
-        recipeEntry("2026-09-07", 1, CURRY),
-        { mealDate: "2026-09-07", slot: 2, entryType: "manual", recipeId: null },
-      ],
-      titles,
-      ingredients
-    );
-    expect(result).toHaveLength(1);
-    expect(result[0].recipeTitle).toBe("Vegetable Curry");
-  });
-
-  it("emits one occurrence per entry — the same recipe on two dates appears twice", () => {
+  it("emits one entry per recipe occurrence on non-consecutive dates", () => {
     const result = assembleShoppingList(
       [recipeEntry("2026-09-07", 1, CURRY), recipeEntry("2026-09-09", 2, CURRY)],
       titles,
       ingredients
     );
-    expect(result.map((occurrence) => `${occurrence.mealDate}#${occurrence.slot}`)).toEqual([
-      "2026-09-07#1",
-      "2026-09-09#2",
-    ]);
-    expect(result.every((occurrence) => occurrence.recipeTitle === "Vegetable Curry")).toBe(true);
+    expect(
+      result.map((entry) => `${entry.startDate}..${entry.endDate}#${entry.slots.join("&")}`)
+    ).toEqual(["2026-09-07..2026-09-07#1", "2026-09-09..2026-09-09#2"]);
+    expect(result.every((entry) => entry.title === "Vegetable Curry")).toBe(true);
   });
 
-  it("sorts occurrences by meal date then slot", () => {
+  it("consolidates the same recipe on a run of consecutive dates into one ranged entry", () => {
     const result = assembleShoppingList(
       [
-        recipeEntry("2026-09-09", 1, SOUP),
-        recipeEntry("2026-09-07", 2, CURRY),
-        recipeEntry("2026-09-07", 1, SOUP),
+        recipeEntry("2026-08-28", 1, CURRY),
+        recipeEntry("2026-08-29", 1, CURRY),
+        recipeEntry("2026-08-30", 1, CURRY),
       ],
       titles,
       ingredients
     );
-    expect(result.map((occurrence) => `${occurrence.mealDate}#${occurrence.slot}`)).toEqual([
-      "2026-09-07#1",
-      "2026-09-07#2",
-      "2026-09-09#1",
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "recipe",
+      startDate: "2026-08-28",
+      endDate: "2026-08-30",
+      slots: [1],
+      title: "Vegetable Curry",
+    });
+    // Ingredients appear once, unchanged (no scaling / quantity maths).
+    expect(result[0].ingredients).toEqual([
+      { name: "Onions", quantity: "2" },
+      { name: "Chickpeas", quantity: "400g" },
+      { name: "Fresh coriander", quantity: null },
     ]);
   });
 
-  it("orders each occurrence's ingredients by stored sort order", () => {
-    const [occurrence] = assembleShoppingList(
-      [recipeEntry("2026-09-07", 1, CURRY)],
+  it("records both slots on a consolidated run when they differ across dates", () => {
+    const result = assembleShoppingList(
+      [recipeEntry("2026-08-28", 2, CURRY), recipeEntry("2026-08-29", 1, CURRY)],
       titles,
       ingredients
     );
-    expect(occurrence.ingredients.map((ingredient) => ingredient.name)).toEqual([
+    expect(result).toHaveLength(1);
+    expect(result[0].slots).toEqual([1, 2]);
+    expect(result[0]).toMatchObject({ startDate: "2026-08-28", endDate: "2026-08-29" });
+  });
+
+  it("does not consolidate the same recipe in both slots on a single date", () => {
+    const result = assembleShoppingList(
+      [recipeEntry("2026-08-28", 1, CURRY), recipeEntry("2026-08-28", 2, CURRY)],
+      titles,
+      ingredients
+    );
+    expect(result).toHaveLength(2);
+    expect(result.map((entry) => entry.slots)).toEqual([[1], [2]]);
+    expect(result.every((entry) => entry.startDate === entry.endDate)).toBe(true);
+  });
+
+  it("breaks a run when a date is missing", () => {
+    const result = assembleShoppingList(
+      [
+        recipeEntry("2026-08-28", 1, CURRY),
+        recipeEntry("2026-08-29", 1, CURRY),
+        recipeEntry("2026-08-31", 1, CURRY),
+      ],
+      titles,
+      ingredients
+    );
+    expect(result.map((entry) => `${entry.startDate}..${entry.endDate}`)).toEqual([
+      "2026-08-28..2026-08-29",
+      "2026-08-31..2026-08-31",
+    ]);
+  });
+
+  it("keeps different meals on the same consecutive run separate", () => {
+    const result = assembleShoppingList(
+      [
+        recipeEntry("2026-08-28", 1, CURRY),
+        recipeEntry("2026-08-29", 1, CURRY),
+        recipeEntry("2026-08-29", 2, SOUP),
+      ],
+      titles,
+      ingredients
+    );
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      title: "Vegetable Curry",
+      startDate: "2026-08-28",
+      endDate: "2026-08-29",
+    });
+    expect(result[1]).toMatchObject({
+      title: "Tomato Soup",
+      startDate: "2026-08-29",
+      endDate: "2026-08-29",
+    });
+  });
+
+  it("includes manual meals as a titled entry with no ingredients", () => {
+    const result = assembleShoppingList(
+      [recipeEntry("2026-09-07", 1, CURRY), manualEntry("2026-09-07", 2, "Pizza")],
+      titles,
+      ingredients
+    );
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ kind: "manual", title: "Pizza", ingredients: [] });
+  });
+
+  it("consolidates the same manual meal across consecutive dates, ignoring case and spacing", () => {
+    const result = assembleShoppingList(
+      [manualEntry("2026-08-28", 1, "Pizza"), manualEntry("2026-08-29", 1, "  pizza ")],
+      titles,
+      ingredients
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "manual",
+      title: "Pizza",
+      startDate: "2026-08-28",
+      endDate: "2026-08-29",
+    });
+  });
+
+  it("skips manual meals with a blank title", () => {
+    const result = assembleShoppingList([manualEntry("2026-09-07", 1, "   ")], titles, ingredients);
+    expect(result).toEqual([]);
+  });
+
+  it("sorts entries by start date, then single-date before ranged, then slot", () => {
+    const result = assembleShoppingList(
+      [
+        recipeEntry("2026-09-07", 1, CURRY),
+        recipeEntry("2026-09-08", 1, CURRY),
+        recipeEntry("2026-09-07", 2, SOUP),
+      ],
+      titles,
+      ingredients
+    );
+    expect(
+      result.map((entry) => `${entry.startDate}..${entry.endDate}#${entry.slots.join("&")}`)
+    ).toEqual(["2026-09-07..2026-09-07#2", "2026-09-07..2026-09-08#1"]);
+  });
+
+  it("orders each entry's ingredients by stored sort order", () => {
+    const [entry] = assembleShoppingList([recipeEntry("2026-09-07", 1, CURRY)], titles, ingredients);
+    expect(entry.ingredients.map((ingredient) => ingredient.name)).toEqual([
       "Onions",
       "Chickpeas",
       "Fresh coriander",
@@ -116,14 +219,37 @@ describe("formatIngredientLine (SPEC 20.5)", () => {
   });
 });
 
+describe("formatEntryDateRange / formatEntrySlotLabel (SPEC 20.4)", () => {
+  const [ranged] = assembleShoppingList(
+    [recipeEntry("2026-08-28", 2, CURRY), recipeEntry("2026-08-29", 1, CURRY)],
+    titles,
+    ingredients
+  );
+
+  it("shows a single long date when start and end match", () => {
+    const [single] = assembleShoppingList([recipeEntry("2026-08-28", 1, CURRY)], titles, ingredients);
+    expect(formatEntryDateRange(single)).toBe("Friday, 28 August 2026");
+  });
+
+  it("shows start – end for a consolidated run", () => {
+    expect(formatEntryDateRange(ranged)).toBe("Friday, 28 August 2026 – Saturday, 29 August 2026");
+  });
+
+  it("labels one or both meal slots", () => {
+    expect(formatEntrySlotLabel(ranged)).toBe("Meals 1 & 2");
+    const [single] = assembleShoppingList([recipeEntry("2026-08-28", 1, CURRY)], titles, ingredients);
+    expect(formatEntrySlotLabel(single)).toBe("Meal 1");
+  });
+});
+
 describe("formatShoppingListText (SPEC 20.4 / 20.8)", () => {
-  it("renders occurrence blocks with date, slot, title and bullets", () => {
-    const [curry, soup] = assembleShoppingList(
+  it("renders entry blocks with date, slot, title and bullets", () => {
+    const entries = assembleShoppingList(
       [recipeEntry("2026-09-07", 1, CURRY), recipeEntry("2026-09-09", 2, SOUP)],
       titles,
       ingredients
     );
-    expect(formatShoppingListText([curry, soup])).toBe(
+    expect(formatShoppingListText(entries)).toBe(
       [
         "Monday, 7 September 2026",
         "Meal 1: Vegetable Curry",
@@ -138,6 +264,29 @@ describe("formatShoppingListText (SPEC 20.4 / 20.8)", () => {
         "",
         "• 1kg Tomatoes",
       ].join("\n")
+    );
+  });
+
+  it("renders a consolidated run with a date range and one ingredient list", () => {
+    const entries = assembleShoppingList(
+      [recipeEntry("2026-08-28", 1, SOUP), recipeEntry("2026-08-29", 1, SOUP)],
+      titles,
+      ingredients
+    );
+    expect(formatShoppingListText(entries)).toBe(
+      [
+        "Friday, 28 August 2026 – Saturday, 29 August 2026",
+        "Meal 1: Tomato Soup",
+        "",
+        "• 1kg Tomatoes",
+      ].join("\n")
+    );
+  });
+
+  it("renders a manual meal as a single 'Ingredients for' bullet", () => {
+    const entries = assembleShoppingList([manualEntry("2026-09-07", 1, "Pizza")], titles, ingredients);
+    expect(formatShoppingListText(entries)).toBe(
+      ["Monday, 7 September 2026", "Meal 1: Pizza", "", "• Ingredients for Pizza"].join("\n")
     );
   });
 

@@ -37,10 +37,13 @@ export async function generateShoppingList(
 
   const supabase = getSupabaseClient();
 
+  // Both recipe and manual entries are fetched: manual meals now surface on
+  // the list as a single "Ingredients for <title>" line (SPEC.md section
+  // 20.3), and consolidation of consecutive-date runs is done in
+  // assembleShoppingList().
   const { data: entryRows, error: entriesError } = await supabase
     .from("meal_plan_entries")
-    .select("meal_date, slot, entry_type, recipe_id")
-    .eq("entry_type", "recipe")
+    .select("meal_date, slot, entry_type, recipe_id, manual_title")
     .gte("meal_date", parsed.data.startDate)
     .lte("meal_date", parsed.data.endDate)
     .order("meal_date", { ascending: true })
@@ -51,12 +54,16 @@ export async function generateShoppingList(
   }
 
   const entries = (
-    entryRows as Pick<MealPlanEntryRow, "meal_date" | "slot" | "entry_type" | "recipe_id">[]
+    entryRows as Pick<
+      MealPlanEntryRow,
+      "meal_date" | "slot" | "entry_type" | "recipe_id" | "manual_title"
+    >[]
   ).map((row) => ({
     mealDate: row.meal_date,
     slot: row.slot,
     entryType: row.entry_type,
     recipeId: row.recipe_id,
+    manualTitle: row.manual_title,
   }));
 
   const recipeIds = [
@@ -99,6 +106,6 @@ export async function generateShoppingList(
     status: "ok",
     startDate: parsed.data.startDate,
     endDate: parsed.data.endDate,
-    occurrences: assembleShoppingList(entries, recipeTitlesById, ingredientsByRecipeId),
+    entries: assembleShoppingList(entries, recipeTitlesById, ingredientsByRecipeId),
   };
 }

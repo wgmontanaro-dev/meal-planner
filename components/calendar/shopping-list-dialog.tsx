@@ -63,8 +63,8 @@ export function ShoppingListDialog() {
             <DialogHeader>
               <DialogTitle>Generate shopping list</DialogTitle>
               <DialogDescription>
-                Choose an inclusive date range. Future dates are allowed; manual meals are
-                not included.
+                Choose an inclusive date range. Future dates are allowed. Manual meals
+                show as a single “Ingredients for …” line.
               </DialogDescription>
             </DialogHeader>
 

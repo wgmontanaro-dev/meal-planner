@@ -376,6 +376,7 @@ type Recipe = {
   storageType: StorageType;
   dietType: DietType;
   childFriendly: TernaryCategory;
+  weeknightFavourite: TernaryCategory;
   preparationType: PreparationType;
   instructions: string | null;
   imageStoragePath: string | null;
@@ -583,6 +584,31 @@ Labels:
 
 Exactly one value is required. Default to "Not specified".
 
+### 10.7 Weeknight favourite
+
+> **Added after MVP.** A quick, reliable go-to for a busy evening. Uses the
+> same shape as child-friendly:
+
+```ts
+type TernaryCategory =
+  | "YES"
+  | "NO"
+  | "NOT_SPECIFIED";
+```
+
+Labels:
+
+- Yes
+- No
+- Not specified
+
+Optional, like every other controlled category since the post-MVP change
+(§11.6). A NULL value means "not specified" and renders as "—". No default
+is written on create; a recipe left unmarked is simply not a weeknight
+favourite for filtering purposes. Stored in a new nullable
+`weeknight_favourite` column with a `CHECK` mirroring the other ternary
+columns.
+
 ## 11. Recipe Validation Rules
 
 ### 11.1 Title
@@ -744,6 +770,13 @@ Provide filters for:
 - Child-friendly status.
 - Preparation type.
 
+> **Amended after MVP:** a seventh filter, **Weeknight favourite** (§10.7),
+> is provided on the same footing as the others — single selected value,
+> AND-combined with the rest, cleared by "Clear filters". It appears in
+> both the Recipe Library filter set and the meal-slot recipe picker
+> (§16.1), since the two share one filter component. Selecting "Yes" is the
+> intended fast path to "what can we throw together tonight".
+
 Filter behaviour:
 
 - Multiple different filter dimensions may be active simultaneously.
@@ -856,6 +889,13 @@ When validation fails:
 
 If practical, warn before navigating away from a recipe form containing unsaved changes. Do not introduce complex draft persistence.
 
+> **Amended after MVP:** implemented. Dismissing the Add Recipe or Edit
+> Recipe dialogue — via Cancel, the close (×) control, the Escape key or a
+> backdrop click — while any field has been changed from its initial value
+> shows a confirmation prompt ("Discard your changes?"). A successful save
+> closes the dialogue without prompting. No draft is persisted; declining
+> the prompt simply leaves the form open.
+
 ## 14. Recipe Deletion
 
 ### 14.1 Deletion rule
@@ -961,6 +1001,11 @@ For each date:
 - Show the full meal title where reasonably possible.
 - Avoid horizontal scrolling.
 
+> **Amended after MVP:** when the agenda first renders for the calendar
+> month that contains today, it scrolls today's row into view instead of
+> starting at the 1st. Any other month starts at the top. This applies to
+> the mobile agenda only; the desktop grid is unaffected.
+
 Dates should appear in chronological order for the selected month.
 
 The view must include every date in the month, including dates without planned meals.
@@ -1056,7 +1101,7 @@ Examples:
 
 - A manual meal does not create a recipe.
 - It does not appear in the Recipe Library.
-- It contributes no ingredients to a shopping list.
+- It adds no recipe ingredients to a shopping list, but appears there as a single `Ingredients for {title}` line.
 - It may be edited later.
 - It may be replaced with a recipe.
 - It may be removed.
@@ -1078,6 +1123,14 @@ For a recipe entry, provide:
 
 - Select from recipe library
 - Enter meal manually
+
+> **Amended after MVP:** the meal-slot dialogue keeps a back stack. Every
+> screen reached from the action menu — the Replace choice, the recipe
+> picker, the manual-title form, and the inline "View recipe" — shows a
+> "Back" control that returns exactly one step. "Cancel" (which closes the
+> dialogue) is shown only on the first screen. Replacing or editing a meal
+> can therefore be abandoned without losing the meal already in the slot,
+> and without closing and reopening the dialogue.
 
 ### 18.2 Manual meal actions
 
@@ -1195,35 +1248,41 @@ Validation:
 - Dates may include future plans.
 - Use inclusive date boundaries.
 
-### 20.3 Ingredient selection rules
+### 20.3 Meal selection rules
 
 For the selected inclusive range:
 
-1. Find every meal-plan entry with entryType = recipe.
-2. Retrieve the referenced recipe.
-3. Retrieve that recipe's ingredients in sortOrder.
-4. Ignore manual meals.
-5. Do not merge duplicate ingredients.
-6. Do not combine quantities.
-7. Do not scale quantities.
-8. Do not omit ingredients with no quantity.
-9. Treat every recipe occurrence independently.
+1. Find every meal-plan entry, whether entryType = recipe or entryType = manual.
+2. For a recipe entry, retrieve the referenced recipe and its ingredients in sortOrder.
+3. For a manual entry, produce a single line item `Ingredients for {title}`; a manual meal contributes no recipe ingredients.
+4. Do not merge duplicate ingredients.
+5. Do not combine quantities.
+6. Do not scale quantities.
+7. Do not omit ingredients with no quantity.
+8. Treat every meal entry independently, except for the consecutive-date consolidation in 20.4.
 
 ### 20.4 Grouping
 
-Group the output by planned recipe occurrence, not merely by unique recipe.
+Group the output by planned meal entry, not merely by unique recipe.
 
-For each occurrence display:
+Consolidate consecutive dates: when the same meal — the same recipe, or the
+same manual title ignoring case and surrounding whitespace — is planned on an
+unbroken run of consecutive dates, show it as one entry spanning that
+inclusive date range, with its ingredients listed once. The same meal in both
+slots on a single date is not consolidated. A broken run, or the same meal on
+non-consecutive dates, produces separate entries.
 
-- Planned date.
-- Meal slot.
-- Recipe title.
-- Its ingredients.
+For each entry display:
+
+- Planned date, or date range for a consolidated run.
+- Meal slot, or both slots where the entry spans them.
+- Recipe title, or manual meal title.
+- Its ingredients, or the single line `Ingredients for {title}` for a manual entry.
 
 Example:
 
 ```
-Monday, 7 September
+Monday, 7 September 2026
 Meal 1: Vegetable Curry
 
 • 2 Onions
@@ -1231,15 +1290,20 @@ Meal 1: Vegetable Curry
 • Fresh coriander
 
 
-Wednesday, 9 September
-Meal 2: Vegetable Curry
+Friday, 28 August 2026 – Saturday, 29 August 2026
+Meal 1: Chicken Curry
 
-• 2 Onions
-• 400g Chickpeas
-• Fresh coriander
+• 1 Onion
+• 500g Chicken thigh
+
+
+Sunday, 30 August 2026
+Meal 2: Pizza
+
+• Ingredients for Pizza
 ```
 
-If the same recipe appears twice, show it twice.
+If the same recipe appears on non-consecutive dates, show it once per run.
 
 ### 20.5 Ingredient display
 
@@ -1259,19 +1323,19 @@ Do not display empty punctuation or placeholder quantities.
 
 ### 20.6 Shopping-list order
 
-Sort occurrences by:
+Sort entries by:
 
-1. Meal date ascending.
-2. Meal slot ascending.
+1. Start date ascending.
+2. Single-date entries before consolidated ranges beginning on the same date.
+3. Earliest meal slot ascending.
 
-Within each recipe, sort ingredients by their stored order.
+Within each entry, sort ingredients by their stored order.
 
 ### 20.7 Empty result
 
-If no library recipes occur in the selected range:
+If no meals at all are planned in the selected range:
 
 - Display a clear empty state.
-- Explain that manual meals do not contribute ingredients.
 - Do not treat the result as an error.
 
 ### 20.8 Output actions
@@ -1282,9 +1346,9 @@ Provide:
 
 Copy a readable plain-text version containing:
 
-- Date.
-- Meal slot.
-- Recipe title.
+- Date, or date range for a consolidated run.
+- Meal slot(s).
+- Recipe title, or manual meal title.
 - Ingredient bullets or line items.
 
 After success, display brief confirmation.
@@ -1383,6 +1447,15 @@ All data-driven views must support:
 - Empty state.
 - Error state.
 - Success feedback where appropriate.
+
+> **Amended after MVP:** "success feedback where appropriate" is delivered
+> as a transient toast (the `Toaster` from `components/ui/toast.tsx`,
+> mounted once in the authenticated layout). A toast confirms: assigning a
+> recipe to a slot, replacing a meal, removing a meal, and saving a recipe
+> edit. Creating a recipe keeps its existing redirect to the new recipe's
+> page and needs no toast. Toasts auto-dismiss after a few seconds, can be
+> dismissed manually, and are announced to assistive technology by the
+> primitive.
 
 ### 23.1 Error-message principles
 
@@ -1694,7 +1767,7 @@ Acceptance criteria:
 - The entry appears in the chosen slot.
 - It persists.
 - It does not create a recipe.
-- It does not add ingredients to shopping lists.
+- It adds no recipe ingredients to shopping lists; it appears there as a single `Ingredients for {title}` line.
 
 **US-12: Manage an existing meal**
 
@@ -1729,11 +1802,11 @@ Acceptance criteria:
 
 - Start and end dates are required.
 - The range is inclusive.
-- Each recipe occurrence appears separately.
-- Date, slot and recipe title are shown.
+- Each meal entry appears separately, except that the same meal on consecutive dates is consolidated into one ranged entry.
+- Date (or date range), slot(s) and recipe or manual meal title are shown.
 - Ingredients retain their recipe order.
 - Ingredients without quantities are present.
-- Manual meals are ignored.
+- Manual meals appear as a single `Ingredients for {title}` line.
 - Duplicate ingredients are not consolidated.
 
 **US-15: Copy and print a shopping list**
@@ -1809,10 +1882,12 @@ Include tests around year boundaries, for example where the current month is Jan
 - Date range is inclusive.
 - Start after end fails.
 - Recipe ingredients appear.
-- Manual meals are ignored.
+- Manual meals appear as a single `Ingredients for {title}` line.
 - Missing quantity is handled.
-- Same recipe on two dates appears twice.
-- Occurrences sort by date and slot.
+- Same recipe on two non-consecutive dates appears twice.
+- The same meal on consecutive dates is consolidated into one ranged entry with ingredients listed once.
+- The same meal in both slots on a single date is not consolidated.
+- Entries sort by start date, then single dates before ranges, then slot.
 - Ingredients sort by stored order.
 - Empty range returns a valid empty state.
 

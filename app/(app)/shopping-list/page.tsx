@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/require-session";
 import { generateShoppingList } from "@/lib/shopping-list/actions";
-import { formatShoppingListText } from "@/lib/shopping-list/build";
-import type { ShoppingListOccurrence } from "@/lib/shopping-list/types";
+import {
+  formatEntryDateRange,
+  formatEntrySlotLabel,
+  formatShoppingListText,
+} from "@/lib/shopping-list/build";
+import type { ShoppingListEntry } from "@/lib/shopping-list/types";
 import { formatDateLong } from "@/lib/dates/calendar";
 import { Button } from "@/components/ui/button";
 import { ShoppingListOutputActions } from "@/components/shopping-list/output-actions";
@@ -12,20 +16,75 @@ export const metadata: Metadata = {
   title: "Shopping list — Meal Planner",
 };
 
-type DateGroup = { mealDate: string; occurrences: ShoppingListOccurrence[] };
+// A run of consecutive single-date entries shares one date heading; a
+// consolidated entry (startDate !== endDate) gets its own section headed
+// with the date range (SPEC.md section 20.4).
+type Section =
+  | { type: "date"; date: string; entries: ShoppingListEntry[] }
+  | { type: "range"; entry: ShoppingListEntry };
 
-/** Groups the already-sorted occurrence list into consecutive runs by date. */
-function groupByDate(occurrences: ShoppingListOccurrence[]): DateGroup[] {
-  const groups: DateGroup[] = [];
-  for (const occurrence of occurrences) {
-    const last = groups[groups.length - 1];
-    if (last && last.mealDate === occurrence.mealDate) {
-      last.occurrences.push(occurrence);
+function groupIntoSections(entries: ShoppingListEntry[]): Section[] {
+  const sections: Section[] = [];
+  for (const entry of entries) {
+    if (entry.startDate !== entry.endDate) {
+      sections.push({ type: "range", entry });
+      continue;
+    }
+    const last = sections[sections.length - 1];
+    if (last && last.type === "date" && last.date === entry.startDate) {
+      last.entries.push(entry);
     } else {
-      groups.push({ mealDate: occurrence.mealDate, occurrences: [occurrence] });
+      sections.push({ type: "date", date: entry.startDate, entries: [entry] });
     }
   }
-  return groups;
+  return sections;
+}
+
+function EntryBlock({ entry }: { entry: ShoppingListEntry }) {
+  return (
+    <div className="border-l-2 border-border pl-4">
+      <h3 className="mb-2 text-base font-semibold text-foreground">
+        {formatEntrySlotLabel(entry)}: {entry.title}
+      </h3>
+
+      {entry.kind === "manual" ? (
+        <ul className="flex flex-col gap-2 text-sm">
+          <li className="flex items-start gap-3">
+            <span
+              className="mt-0.5 size-4 shrink-0 rounded border border-border"
+              aria-hidden="true"
+            />
+            <span className="text-muted-foreground">
+              Ingredients for{" "}
+              <span className="font-medium text-foreground">{entry.title}</span>
+            </span>
+          </li>
+        </ul>
+      ) : entry.ingredients.length > 0 ? (
+        <ul className="flex flex-col gap-2 text-sm">
+          {entry.ingredients.map((ingredient, ingredientIndex) => {
+            const quantity = ingredient.quantity?.trim();
+            return (
+              <li key={ingredientIndex} className="flex items-start gap-3">
+                <span
+                  className="mt-0.5 size-4 shrink-0 rounded border border-border"
+                  aria-hidden="true"
+                />
+                <span className="text-muted-foreground">
+                  {quantity ? `${quantity} ` : ""}
+                  <span className="font-medium text-foreground">{ingredient.name}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No ingredients recorded for this recipe.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default async function ShoppingListPage(props: PageProps<"/shopping-list">) {
@@ -68,11 +127,9 @@ export default async function ShoppingListPage(props: PageProps<"/shopping-list"
         >
           {result.message}
         </p>
-      ) : result.occurrences.length === 0 ? (
+      ) : result.entries.length === 0 ? (
         <p className="rounded-xl border border-border p-4 text-sm text-muted-foreground">
-          No library recipes are planned between {formatDateLong(start)} and{" "}
-          {formatDateLong(end)}. Manual meals don’t contribute ingredients to the shopping
-          list.
+          No meals are planned between {formatDateLong(start)} and {formatDateLong(end)}.
         </p>
       ) : (
         <div className="flex flex-col gap-6">
@@ -80,50 +137,33 @@ export default async function ShoppingListPage(props: PageProps<"/shopping-list"
             {formatDateLong(result.startDate)} – {formatDateLong(result.endDate)}
           </p>
 
-          <ShoppingListOutputActions text={formatShoppingListText(result.occurrences)} />
+          <ShoppingListOutputActions text={formatShoppingListText(result.entries)} />
 
           <div className="flex flex-col gap-8">
-            {groupByDate(result.occurrences).map((group) => (
-              <section key={group.mealDate} className="flex flex-col gap-4">
-                <h2 className="border-b border-border pb-2 font-heading text-sm font-semibold tracking-widest text-primary uppercase">
-                  {formatDateLong(group.mealDate)}
-                </h2>
+            {groupIntoSections(result.entries).map((section) =>
+              section.type === "date" ? (
+                <section key={`date-${section.date}`} className="flex flex-col gap-4">
+                  <h2 className="border-b border-border pb-2 font-heading text-sm font-semibold tracking-widest text-primary uppercase">
+                    {formatDateLong(section.date)}
+                  </h2>
 
-                {group.occurrences.map((occurrence, index) => (
-                  <div key={index} className="border-l-2 border-border pl-4">
-                    <h3 className="mb-2 text-base font-semibold text-foreground">
-                      Meal {occurrence.slot}: {occurrence.recipeTitle}
-                    </h3>
+                  {section.entries.map((entry, index) => (
+                    <EntryBlock key={index} entry={entry} />
+                  ))}
+                </section>
+              ) : (
+                <section
+                  key={`range-${section.entry.startDate}-${section.entry.endDate}-${section.entry.slots.join("")}-${section.entry.title}`}
+                  className="flex flex-col gap-4"
+                >
+                  <h2 className="border-b border-border pb-2 font-heading text-sm font-semibold tracking-widest text-primary uppercase">
+                    {formatEntryDateRange(section.entry)}
+                  </h2>
 
-                    {occurrence.ingredients.length > 0 ? (
-                      <ul className="flex flex-col gap-2 text-sm">
-                        {occurrence.ingredients.map((ingredient, ingredientIndex) => {
-                          const quantity = ingredient.quantity?.trim();
-                          return (
-                            <li key={ingredientIndex} className="flex items-start gap-3">
-                              <span
-                                className="mt-0.5 size-4 shrink-0 rounded border border-border"
-                                aria-hidden="true"
-                              />
-                              <span className="text-muted-foreground">
-                                {quantity ? `${quantity} ` : ""}
-                                <span className="font-medium text-foreground">
-                                  {ingredient.name}
-                                </span>
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No ingredients recorded for this recipe.
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </section>
-            ))}
+                  <EntryBlock entry={section.entry} />
+                </section>
+              )
+            )}
           </div>
         </div>
       )}

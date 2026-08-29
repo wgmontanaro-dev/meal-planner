@@ -34,11 +34,11 @@ beforeEach(() => {
 });
 
 describe("generateShoppingList (SPEC 20.2 / 20.3 / 24.5)", () => {
-  it("queries the range with inclusive bounds and only recipe entries", async () => {
+  it("queries the range with inclusive bounds and does not filter out manual entries", async () => {
     await generateShoppingList("2026-09-01", "2026-09-30");
 
     const mealPlanCalls = calls.filter((call) => call.table === "meal_plan_entries");
-    expect(mealPlanCalls).toContainEqual({
+    expect(mealPlanCalls).not.toContainEqual({
       table: "meal_plan_entries",
       method: "eq",
       args: ["entry_type", "recipe"],
@@ -55,11 +55,12 @@ describe("generateShoppingList (SPEC 20.2 / 20.3 / 24.5)", () => {
     });
   });
 
-  it("assembles occurrences joined with recipe titles and ordered ingredients", async () => {
+  it("assembles entries joined with recipe titles and ordered ingredients", async () => {
     responseByTable.meal_plan_entries = {
       data: [
-        { meal_date: "2026-09-09", slot: 2, entry_type: "recipe", recipe_id: CURRY },
-        { meal_date: "2026-09-07", slot: 1, entry_type: "recipe", recipe_id: CURRY },
+        { meal_date: "2026-09-09", slot: 2, entry_type: "recipe", recipe_id: CURRY, manual_title: null },
+        { meal_date: "2026-09-07", slot: 1, entry_type: "recipe", recipe_id: CURRY, manual_title: null },
+        { meal_date: "2026-09-07", slot: 2, entry_type: "manual", recipe_id: null, manual_title: "Pizza" },
       ],
       error: null,
     };
@@ -76,11 +77,13 @@ describe("generateShoppingList (SPEC 20.2 / 20.3 / 24.5)", () => {
 
     expect(result.status).toBe("ok");
     if (result.status !== "ok") return;
-    expect(result.occurrences.map((o) => `${o.mealDate}#${o.slot}`)).toEqual([
-      "2026-09-07#1",
-      "2026-09-09#2",
+    expect(result.entries.map((e) => `${e.startDate}#${e.slots.join("&")}#${e.title}`)).toEqual([
+      "2026-09-07#1#Vegetable Curry",
+      "2026-09-07#2#Pizza",
+      "2026-09-09#2#Vegetable Curry",
     ]);
-    expect(result.occurrences[0].ingredients.map((i) => i.name)).toEqual(["Onions", "Chickpeas"]);
+    expect(result.entries[0].ingredients.map((i) => i.name)).toEqual(["Onions", "Chickpeas"]);
+    expect(result.entries[1]).toMatchObject({ kind: "manual", ingredients: [] });
   });
 
   it("rejects a start date before the retention boundary without querying", async () => {
