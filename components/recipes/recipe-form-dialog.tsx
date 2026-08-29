@@ -54,6 +54,7 @@ import {
   STORAGE_TYPE_LABELS,
   STORAGE_TYPES,
   CHILD_FRIENDLY_LABELS,
+  WEEKNIGHT_FAVOURITE_LABELS,
   TERNARY_CATEGORIES,
 } from "@/lib/constants/categories";
 import type { RecipeWithIngredients } from "@/lib/database/types";
@@ -68,9 +69,19 @@ const EMPTY_VALUES: RecipeFormValues = {
   storageType: "",
   dietType: "",
   childFriendly: "",
+  weeknightFavourite: "",
   preparationType: "",
   ingredients: [{ name: "", quantity: "" }],
 };
+
+/**
+ * Native confirm shown when the recipe form is dismissed with unsaved edits
+ * (SPEC.md section 13.6). Returns true when the user chooses to discard.
+ * Exported so each dialog wrapper can guard its own dismissal paths.
+ */
+export function confirmDiscard(): boolean {
+  return window.confirm("Discard your changes? Your edits will not be saved.");
+}
 
 export function recipeToFormValues(recipe: RecipeWithIngredients): RecipeFormValues {
   return {
@@ -83,6 +94,7 @@ export function recipeToFormValues(recipe: RecipeWithIngredients): RecipeFormVal
     storageType: recipe.storageType ?? "",
     dietType: recipe.dietType ?? "",
     childFriendly: recipe.childFriendly ?? "",
+    weeknightFavourite: recipe.weeknightFavourite ?? "",
     preparationType: recipe.preparationType ?? "",
     ingredients:
       recipe.ingredients.length > 0
@@ -107,6 +119,7 @@ const FIELD_FOCUS_ORDER = [
   "storageType",
   "dietType",
   "childFriendly",
+  "weeknightFavourite",
   "preparationType",
   "instructions",
   "image",
@@ -186,12 +199,14 @@ function FormFields({
   currentImage,
   recipeTitle,
   discoveredImageUrl,
+  onDirty,
 }: {
   values: RecipeFormValues;
   state: RecipeFormState;
   currentImage: RecipeImageUrls | null;
   recipeTitle: string;
   discoveredImageUrl?: string | null;
+  onDirty: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -280,7 +295,11 @@ function FormFields({
 
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold text-muted-foreground">Ingredients</h3>
-        <IngredientEditor initialValues={values.ingredients} errors={state.ingredientErrors} />
+        <IngredientEditor
+          initialValues={values.ingredients}
+          errors={state.ingredientErrors}
+          onDirty={onDirty}
+        />
         {state.fieldErrors?.ingredients ? (
           <p role="alert" className="text-sm text-destructive">
             {state.fieldErrors.ingredients}
@@ -300,6 +319,7 @@ function FormFields({
           labels={PREP_TIME_LABELS}
           defaultValue={values.prepTimeCategory || undefined}
           error={state.fieldErrors?.prepTimeCategory}
+          onValueChange={onDirty}
         />
         <CategorySelect
           id="recipe-cuisine"
@@ -309,6 +329,7 @@ function FormFields({
           labels={CUISINE_LABELS}
           defaultValue={values.cuisine || undefined}
           error={state.fieldErrors?.cuisine}
+          onValueChange={onDirty}
         />
         <CategorySelect
           id="recipe-storageType"
@@ -318,6 +339,7 @@ function FormFields({
           labels={STORAGE_TYPE_LABELS}
           defaultValue={values.storageType || undefined}
           error={state.fieldErrors?.storageType}
+          onValueChange={onDirty}
         />
         <CategorySelect
           id="recipe-dietType"
@@ -327,6 +349,7 @@ function FormFields({
           labels={DIET_TYPE_LABELS}
           defaultValue={values.dietType || undefined}
           error={state.fieldErrors?.dietType}
+          onValueChange={onDirty}
         />
         <CategorySelect
           id="recipe-childFriendly"
@@ -336,6 +359,17 @@ function FormFields({
           labels={CHILD_FRIENDLY_LABELS}
           defaultValue={values.childFriendly || undefined}
           error={state.fieldErrors?.childFriendly}
+          onValueChange={onDirty}
+        />
+        <CategorySelect
+          id="recipe-weeknightFavourite"
+          name="weeknightFavourite"
+          label="Weeknight favourite"
+          options={TERNARY_CATEGORIES}
+          labels={WEEKNIGHT_FAVOURITE_LABELS}
+          defaultValue={values.weeknightFavourite || undefined}
+          error={state.fieldErrors?.weeknightFavourite}
+          onValueChange={onDirty}
         />
         <CategorySelect
           id="recipe-preparationType"
@@ -345,6 +379,7 @@ function FormFields({
           labels={PREPARATION_TYPE_LABELS}
           defaultValue={values.preparationType || undefined}
           error={state.fieldErrors?.preparationType}
+          onValueChange={onDirty}
         />
       </section>
 
@@ -392,6 +427,7 @@ export function RecipeForm({
   currentImage,
   recipeTitle,
   onClose,
+  onDirtyChange,
   importedImageUrl,
 }: {
   action: (state: RecipeFormState, formData: FormData) => Promise<RecipeFormState>;
@@ -401,23 +437,55 @@ export function RecipeForm({
   currentImage: RecipeImageUrls | null;
   recipeTitle: string;
   onClose: () => void;
+  /** Reports whether the form has unsaved edits, so a wrapper dialog can
+   *  guard its own Escape / backdrop / close-button dismissal. */
+  onDirtyChange?: (dirty: boolean) => void;
   /** An image URL found by the "import from URL" flow, attached on save. */
   importedImageUrl?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(action, initialRecipeFormState);
   const currentValues = state.values ?? values;
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  // Cover a full-page unload (tab close, refresh) while edits are pending
+  // (SPEC.md section 13.6). A server-action redirect is an RSC navigation,
+  // not an unload, so `createRecipe`'s redirect does not trigger this.
+  useEffect(() => {
+    if (!dirty) return;
+    function warn(event: BeforeUnloadEvent) {
+      event.preventDefault();
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   // `updateRecipe` returns a success state instead of redirecting, so the
   // caller can close its dialog. (`createRecipe` still redirects, so this
-  // never fires for the add form.)
+  // never fires for the add form.) `onClose` here is the wrappers' raw
+  // close, which bypasses the unsaved-changes guard — the save succeeded,
+  // so there is nothing to discard. The dialog unmounting also tears down
+  // the beforeunload listener below.
   useEffect(() => {
     if (state.status === "success") {
       onClose();
     }
   }, [state, onClose]);
 
+  function requestClose() {
+    if (dirty && !confirmDiscard()) return;
+    onClose();
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form
+      action={formAction}
+      onChange={() => setDirty(true)}
+      className="flex flex-col gap-6"
+    >
       {importedImageUrl ? (
         <input type="hidden" name="importedImageUrl" value={importedImageUrl} />
       ) : null}
@@ -427,6 +495,7 @@ export function RecipeForm({
         currentImage={currentImage}
         recipeTitle={recipeTitle}
         discoveredImageUrl={importedImageUrl}
+        onDirty={() => setDirty(true)}
       />
       {state.status === "error" && !state.fieldErrors ? (
         <p role="alert" className="text-sm text-destructive">
@@ -434,7 +503,7 @@ export function RecipeForm({
         </p>
       ) : null}
       <div className="-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+        <Button type="button" variant="outline" onClick={requestClose} disabled={pending}>
           Cancel
         </Button>
         <Button type="submit" disabled={pending}>
@@ -534,10 +603,28 @@ export function AddRecipeFormDialog({
   const isOpen = open ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const [step, setStep] = useState<AddStep>({ kind: "start" });
+  const dirtyRef = useRef(false);
 
+  function closeNow() {
+    dirtyRef.current = false;
+    setStep({ kind: "start" });
+    setOpen(false);
+  }
+
+  // The Dialog's own dismissal (Escape, backdrop, close button); guard here
+  // since the form's Cancel button guards itself.
   function changeOpen(next: boolean) {
-    setOpen(next);
-    if (!next) setStep({ kind: "start" });
+    if (!next) {
+      if (dirtyRef.current && !confirmDiscard()) return;
+      closeNow();
+      return;
+    }
+    setOpen(true);
+  }
+
+  function backToStart() {
+    dirtyRef.current = false;
+    setStep({ kind: "start" });
   }
 
   const handleImported = useCallback((payload: ImportedPayload) => {
@@ -564,7 +651,7 @@ export function AddRecipeFormDialog({
             {step.kind !== "start" ? (
               <button
                 type="button"
-                onClick={() => setStep({ kind: "start" })}
+                onClick={backToStart}
                 className="self-start text-sm text-primary underline-offset-4 hover:underline"
               >
                 ‹ Back
@@ -591,7 +678,10 @@ export function AddRecipeFormDialog({
                 currentImage={null}
                 recipeTitle={step.values.title}
                 importedImageUrl={step.importedImageUrl}
-                onClose={() => changeOpen(false)}
+                onClose={closeNow}
+                onDirtyChange={(next) => {
+                  dirtyRef.current = next;
+                }}
               />
             </>
           ) : (
@@ -602,7 +692,10 @@ export function AddRecipeFormDialog({
               values={EMPTY_VALUES}
               currentImage={null}
               recipeTitle=""
-              onClose={() => changeOpen(false)}
+              onClose={closeNow}
+              onDirtyChange={(next) => {
+                dirtyRef.current = next;
+              }}
             />
           )}
         </div>
@@ -628,9 +721,15 @@ export function EditRecipeFormDialog({
   const isOpen = open ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
   const boundUpdateRecipe = updateRecipe.bind(null, recipe.id);
+  const dirtyRef = useRef(false);
+
+  function handleOpenChange(next: boolean) {
+    if (!next && dirtyRef.current && !confirmDiscard()) return;
+    setOpen(next);
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {trigger ? <DialogTrigger render={trigger} /> : null}
       <DialogContent
         className={FORM_DIALOG_CONTENT_CLASS}
@@ -649,6 +748,9 @@ export function EditRecipeFormDialog({
               currentImage={imageUrls}
               recipeTitle={recipe.title}
               onClose={() => setOpen(false)}
+              onDirtyChange={(next) => {
+                dirtyRef.current = next;
+              }}
             />
           ) : null}
         </div>

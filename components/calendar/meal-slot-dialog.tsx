@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toast";
 import { FilterFields, type DraftFilters } from "@/components/recipes/filter-fields";
 import { RecipeQuickView } from "@/components/calendar/recipe-quick-view";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
@@ -58,6 +59,7 @@ function RecipePickerList({
 
   useEffect(() => {
     if (state.status === "success") {
+      toast.add({ title: "Meal saved", type: "success" });
       onDone();
     }
   }, [state, onDone]);
@@ -173,6 +175,7 @@ function ManualMealForm({
 
   useEffect(() => {
     if (state.status === "success") {
+      toast.add({ title: "Meal saved", type: "success" });
       onDone();
     }
   }, [state, onDone]);
@@ -229,6 +232,7 @@ function RemoveMealButton({
 
   useEffect(() => {
     if (state.status === "success") {
+      toast.add({ title: "Meal removed", type: "success" });
       onDone();
     }
   }, [state, onDone]);
@@ -258,42 +262,72 @@ function DialogBody({
   recipes: RecipeSummary[];
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<DialogMode>(selected.entry ? "actions" : "choose");
   const { mealDate, slot, entry } = selected;
+  // A back stack so every screen reached from the action menu can return one
+  // step without closing the dialogue (SPEC.md section 18.1). "Cancel" shows
+  // only on the first screen; deeper screens show "Back".
+  const [stack, setStack] = useState<DialogMode[]>(() => (entry ? ["actions"] : ["choose"]));
+  const mode = stack[stack.length - 1];
+  const canGoBack = stack.length > 1;
+
+  function push(next: DialogMode) {
+    setStack((current) => [...current, next]);
+  }
+  function back() {
+    setStack((current) => (current.length > 1 ? current.slice(0, -1) : current));
+  }
+
+  const backLink = (
+    <button
+      type="button"
+      onClick={back}
+      className="self-start text-sm text-primary underline-offset-4 hover:underline"
+    >
+      ‹ Back
+    </button>
+  );
 
   if (mode === "choose") {
     return (
       <div className="flex flex-col gap-2">
-        <Button variant="outline" onClick={() => setMode("pick-recipe")}>
+        <Button variant="outline" onClick={() => push("pick-recipe")}>
           Select from recipe library
         </Button>
-        <Button variant="outline" onClick={() => setMode("manual-edit")}>
+        <Button variant="outline" onClick={() => push("manual-edit")}>
           Enter meal manually
         </Button>
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
+        <Button variant="ghost" onClick={canGoBack ? back : onClose}>
+          {canGoBack ? "Back" : "Cancel"}
         </Button>
       </div>
     );
   }
 
   if (mode === "pick-recipe") {
-    return <RecipePickerList recipes={recipes} mealDate={mealDate} slot={slot} onDone={onClose} />;
+    return (
+      <div className="flex flex-col gap-3">
+        {backLink}
+        <RecipePickerList recipes={recipes} mealDate={mealDate} slot={slot} onDone={onClose} />
+      </div>
+    );
   }
 
   if (mode === "manual-edit") {
     return (
-      <ManualMealForm
-        mealDate={mealDate}
-        slot={slot}
-        initialTitle={entry?.entryType === "manual" ? (entry.manualTitle ?? "") : ""}
-        onDone={onClose}
-      />
+      <div className="flex flex-col gap-3">
+        {backLink}
+        <ManualMealForm
+          mealDate={mealDate}
+          slot={slot}
+          initialTitle={entry?.entryType === "manual" ? (entry.manualTitle ?? "") : ""}
+          onDone={onClose}
+        />
+      </div>
     );
   }
 
   if (mode === "view-recipe" && entry?.recipeId) {
-    return <RecipeQuickView recipeId={entry.recipeId} onBack={() => setMode("actions")} />;
+    return <RecipeQuickView recipeId={entry.recipeId} onBack={back} />;
   }
 
   // mode === "actions"
@@ -304,10 +338,10 @@ function DialogBody({
   if (entry.entryType === "recipe") {
     return (
       <div className="flex flex-col gap-2">
-        <Button variant="outline" onClick={() => setMode("view-recipe")}>
+        <Button variant="outline" onClick={() => push("view-recipe")}>
           View recipe
         </Button>
-        <Button variant="outline" onClick={() => setMode("choose")}>
+        <Button variant="outline" onClick={() => push("choose")}>
           Replace meal
         </Button>
         <RemoveMealButton mealDate={mealDate} slot={slot} onDone={onClose} />
@@ -320,10 +354,10 @@ function DialogBody({
 
   return (
     <div className="flex flex-col gap-2">
-      <Button variant="outline" onClick={() => setMode("manual-edit")}>
+      <Button variant="outline" onClick={() => push("manual-edit")}>
         Edit title
       </Button>
-      <Button variant="outline" onClick={() => setMode("choose")}>
+      <Button variant="outline" onClick={() => push("choose")}>
         Replace meal
       </Button>
       <RemoveMealButton mealDate={mealDate} slot={slot} onDone={onClose} />

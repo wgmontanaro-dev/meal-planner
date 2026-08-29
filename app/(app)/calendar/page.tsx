@@ -71,6 +71,7 @@ export default async function CalendarPage(props: PageProps<"/calendar">) {
     storageType: recipe.storageType,
     dietType: recipe.dietType,
     childFriendly: recipe.childFriendly,
+    weeknightFavourite: recipe.weeknightFavourite,
     preparationType: recipe.preparationType,
   }));
 

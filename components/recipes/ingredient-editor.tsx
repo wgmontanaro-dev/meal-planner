@@ -24,9 +24,13 @@ function toRows(values: { name: string; quantity: string }[]): IngredientRow[] {
 export function IngredientEditor({
   initialValues,
   errors,
+  onDirty,
 }: {
   initialValues: { name: string; quantity: string }[];
   errors?: Record<number, string>;
+  /** Called on any structural change (add / remove / reorder) so the parent
+   *  form can track unsaved edits; typing is caught by the form itself. */
+  onDirty?: () => void;
 }) {
   const [rows, setRows] = useState<IngredientRow[]>(() => toRows(initialValues));
   const legendId = useId();
@@ -39,6 +43,7 @@ export function IngredientEditor({
 
   function addRow() {
     setRows((current) => [...current, { key: createRowKey(), name: "", quantity: "" }]);
+    onDirty?.();
   }
 
   function removeRow(index: number) {
@@ -48,6 +53,7 @@ export function IngredientEditor({
       }
       return current.filter((_, rowIndex) => rowIndex !== index);
     });
+    onDirty?.();
   }
 
   function moveRow(index: number, direction: -1 | 1) {
@@ -61,6 +67,7 @@ export function IngredientEditor({
       next.splice(targetIndex, 0, moved);
       return next;
     });
+    onDirty?.();
   }
 
   return (

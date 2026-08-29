@@ -104,6 +104,14 @@ export const CHILD_FRIENDLY_LABELS: Record<TernaryCategory, string> = {
   NOT_SPECIFIED: "Not specified",
 };
 
+// Weeknight favourite (SPEC.md section 10.7) — a post-MVP ternary category.
+// Same shape and CHECK values as child_friendly.
+export const WEEKNIGHT_FAVOURITE_LABELS: Record<TernaryCategory, string> = {
+  YES: "Yes",
+  NO: "No",
+  NOT_SPECIFIED: "Not specified",
+};
+
 export const PREPARATION_TYPES = [
   "PRE_PREPARED",
   "REQUIRES_PREPARATION",

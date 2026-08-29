@@ -24,6 +24,9 @@ export function matchesFilters(recipe: RecipeSummary, filters: DraftFilters): bo
   if (filters.childFriendly && recipe.childFriendly !== filters.childFriendly) {
     return false;
   }
+  if (filters.weeknightFavourite && recipe.weeknightFavourite !== filters.weeknightFavourite) {
+    return false;
+  }
   if (filters.preparationType && recipe.preparationType !== filters.preparationType) {
     return false;
   }

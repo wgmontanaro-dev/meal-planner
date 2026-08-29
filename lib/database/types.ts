@@ -20,6 +20,7 @@ export type RecipeRow = {
   storage_type: StorageType | null;
   diet_type: DietType | null;
   child_friendly: TernaryCategory | null;
+  weeknight_favourite: TernaryCategory | null;
   preparation_type: PreparationType | null;
   instructions: string | null;
   image_storage_path: string | null;
@@ -52,6 +53,7 @@ export type Recipe = {
   storageType: StorageType | null;
   dietType: DietType | null;
   childFriendly: TernaryCategory | null;
+  weeknightFavourite: TernaryCategory | null;
   preparationType: PreparationType | null;
   instructions: string | null;
   imageStoragePath: string | null;
@@ -84,6 +86,7 @@ export function toRecipe(row: RecipeRow): Recipe {
     storageType: row.storage_type,
     dietType: row.diet_type,
     childFriendly: row.child_friendly,
+    weeknightFavourite: row.weeknight_favourite,
     preparationType: row.preparation_type,
     instructions: row.instructions,
     imageStoragePath: row.image_storage_path,
@@ -159,6 +162,7 @@ export type RecipeWritePayload = {
   storageType: StorageType | null;
   dietType: DietType | null;
   childFriendly: TernaryCategory | null;
+  weeknightFavourite: TernaryCategory | null;
   preparationType: PreparationType | null;
   instructions: string | null;
 };

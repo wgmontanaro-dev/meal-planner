@@ -18,6 +18,7 @@ export type RecipeFilters = {
   storageType?: StorageType;
   dietType?: DietType;
   childFriendly?: TernaryCategory;
+  weeknightFavourite?: TernaryCategory;
   preparationType?: PreparationType;
 };
 
@@ -31,6 +32,7 @@ export type RecipeFormValues = {
   storageType: string;
   dietType: string;
   childFriendly: string;
+  weeknightFavourite: string;
   preparationType: string;
   ingredients: { name: string; quantity: string }[];
 };

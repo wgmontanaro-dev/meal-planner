@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -83,16 +83,19 @@ function AgendaRow({
   isToday,
   entryFor,
   onSelect,
+  rowRef,
 }: {
   mealDate: string;
   isToday: boolean;
   entryFor: (slot: 1 | 2) => MealPlanEntryWithRecipe | undefined;
   onSelect: (selected: SelectedSlot) => void;
+  rowRef?: React.Ref<HTMLLIElement>;
 }) {
   return (
     <li
+      ref={rowRef}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border bg-background p-3",
+        "flex scroll-mt-4 flex-col gap-2 rounded-xl border bg-background p-3",
         isToday ? "border-2 border-primary" : "border-border"
       )}
     >
@@ -166,6 +169,16 @@ export function CalendarView({
   const entryMap = buildEntryMap(entries);
   const today = getTodayIsoDateLondon();
   const leadingBlanks = mondayFirstLeadingBlanks(year, month);
+  const todayRowRef = useRef<HTMLLIElement>(null);
+
+  // On the mobile agenda, land on today's row rather than the 1st when the
+  // month being shown is the one that contains today (SPEC.md section 15.5).
+  // The ref is only attached to that row, so it is null in any other month.
+  useEffect(() => {
+    const row = todayRowRef.current;
+    if (!row || !window.matchMedia("(max-width: 639px)").matches) return;
+    row.scrollIntoView({ block: "start" });
+  }, [year, month]);
 
   function entryFor(mealDate: string, slot: 1 | 2) {
     return entryMap.get(`${mealDate}-${slot}`);
@@ -188,6 +201,7 @@ export function CalendarView({
             isToday={mealDate === today}
             entryFor={(slot) => entryFor(mealDate, slot)}
             onSelect={setSelected}
+            rowRef={mealDate === today ? todayRowRef : undefined}
           />
         ))}
       </ul>

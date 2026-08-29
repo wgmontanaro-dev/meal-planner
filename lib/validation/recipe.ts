@@ -84,6 +84,7 @@ export const recipeInputSchema = z.object({
   storageType: optionalCategory(STORAGE_TYPES),
   dietType: optionalCategory(DIET_TYPES),
   childFriendly: optionalCategory(TERNARY_CATEGORIES),
+  weeknightFavourite: optionalCategory(TERNARY_CATEGORIES),
   preparationType: optionalCategory(PREPARATION_TYPES),
   ingredients: z.array(ingredientInputSchema),
 });

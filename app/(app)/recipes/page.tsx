@@ -37,6 +37,7 @@ function readFilters(
     storageType: parseCategoryValue(STORAGE_TYPES, readParam("storageType")),
     dietType: parseCategoryValue(DIET_TYPES, readParam("dietType")),
     childFriendly: parseCategoryValue(TERNARY_CATEGORIES, readParam("childFriendly")),
+    weeknightFavourite: parseCategoryValue(TERNARY_CATEGORIES, readParam("weeknightFavourite")),
     preparationType: parseCategoryValue(PREPARATION_TYPES, readParam("preparationType")),
   };
 }

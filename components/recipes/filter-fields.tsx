@@ -13,10 +13,11 @@ import {
   STORAGE_TYPE_LABELS,
   STORAGE_TYPES,
   CHILD_FRIENDLY_LABELS,
+  WEEKNIGHT_FAVOURITE_LABELS,
   TERNARY_CATEGORIES,
 } from "@/lib/constants/categories";
 
-// The six controlled-category filters shared between the Recipe Library
+// The seven controlled-category filters shared between the Recipe Library
 // (SPEC.md section 12.6) and the meal-slot recipe picker (SPEC.md section
 // 16.1) — reused as-is rather than rebuilt per surface.
 export const FILTER_PARAM_KEYS = [
@@ -25,6 +26,7 @@ export const FILTER_PARAM_KEYS = [
   "storageType",
   "dietType",
   "childFriendly",
+  "weeknightFavourite",
   "preparationType",
 ] as const;
 
@@ -89,6 +91,16 @@ export function FilterFields({
         clearable
         value={filters.childFriendly}
         onValueChange={(value) => onChange("childFriendly", value)}
+      />
+      <CategorySelect
+        id="filter-weeknightFavourite"
+        name="weeknightFavourite"
+        label="Weeknight favourite"
+        options={TERNARY_CATEGORIES}
+        labels={WEEKNIGHT_FAVOURITE_LABELS}
+        clearable
+        value={filters.weeknightFavourite}
+        onValueChange={(value) => onChange("weeknightFavourite", value)}
       />
       <CategorySelect
         id="filter-preparationType"

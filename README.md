@@ -13,7 +13,7 @@ and hardening) are implemented, plus a round of post-spec enhancements
 
 Spec scope, in brief:
 
-- **Recipe library** — CRUD, six controlled-category filters, ingredient
+- **Recipe library** — CRUD, seven controlled-category filters, ingredient
   editor, source links, deletion blocked while a recipe is planned.
 - **Calendar** — mobile agenda / desktop grid, Meal 1 & Meal 2 per day,
   recipe or manual entries, month navigation.
@@ -66,7 +66,7 @@ so a change doesn't undo it:
   recipes; **its category fields (`cuisine`, `prepTimeCategory`, …) are
   best-guesses, not authoritative.** `import/` is throwaway.
 - **Only the title is required.** Since MVP, a recipe needs a title and
-  nothing else — the six controlled categories and the ingredient list may
+  nothing else — the seven controlled categories and the ingredient list may
   all be empty. Migration `20260828120000_optional_recipe_categories.sql`
   drops the `NOT NULL`s and widens the `CHECK`s to permit `NULL` (meaning
   "not specified"); `recipeInputSchema` maps a blank category to `null` and
@@ -74,6 +74,24 @@ so a change doesn't undo it:
   (`lib/constants/categories.ts`), which renders "—" for an unset value, and
   the compact card/calendar chips hide themselves when empty. This
   supersedes SPEC.md §11.4 and §11.6.
+- **Weeknight favourite.** A seventh controlled category (SPEC.md §10.7),
+  added after the others — a nullable ternary (`YES` / `NO` /
+  `NOT_SPECIFIED`) in a new `weeknight_favourite` column. Migrations
+  `20260829120000_add_weeknight_favourite.sql` (column + `CHECK`) and
+  `20260829120100_recipe_write_functions_weeknight_favourite.sql` (both
+  recipe-write RPCs gain the column). It flows through the same paths as
+  `childFriendly` everywhere, and its filter is added once in
+  `components/recipes/filter-fields.tsx`, so it appears in both the library
+  and the meal-slot recipe picker. Selecting "Yes" is the fast path to
+  "what can we cook tonight".
+- **Post-spec refinements.** Success toasts on calendar meal actions and
+  recipe-edit saves (`Toaster` mounted in `app/(app)/layout.tsx`, `toast`
+  from `components/ui/toast.tsx`); the mobile calendar agenda scrolls to
+  today's row on load for the current month; the meal-slot dialog keeps a
+  back stack so Replace / Edit can be abandoned without closing it; the
+  recipe form prompts (`window.confirm`) before discarding unsaved edits on
+  Cancel / Escape / backdrop / close. SPEC.md §§13.6, 15.5, 18.1, 23 carry
+  the amendment notes.
 - **Add a recipe from a URL.** The Add Recipe dialog opens on a chooser —
   paste a recipe web address, or enter the details by hand.
   `lib/recipes/import.ts` (a pure, unit-tested module) fetches the page and
@@ -213,11 +231,12 @@ the Supabase dashboard's SQL editor, in filename order.
 The current migrations create the `recipes`, `ingredients`, and
 `meal_plan_entries` tables along with their constraints and indexes, and
 the `create_recipe_with_ingredients` / `update_recipe_with_ingredients`
-transactional functions used by the recipe form. A later migration makes
+transactional functions used by the recipe form. Later migrations make
 every recipe **category** column nullable (only the title is required —
-see "Working on this codebase"). They do not insert any demonstration
-data — a fresh deployment starts with an empty recipe library, as required
-by the specification.
+see "Working on this codebase") and add the `weeknight_favourite` category
+column (updating both write functions to match). They do not insert any
+demonstration data — a fresh deployment starts with an empty recipe
+library, as required by the specification.
 
 ## 4. Set up storage
 

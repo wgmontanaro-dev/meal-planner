@@ -27,5 +27,6 @@ export type RecipeSummary = {
   storageType: StorageType | null;
   dietType: DietType | null;
   childFriendly: TernaryCategory | null;
+  weeknightFavourite: TernaryCategory | null;
   preparationType: PreparationType | null;
 };

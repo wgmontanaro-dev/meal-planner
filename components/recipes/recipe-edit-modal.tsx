@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
-import { RecipeForm, recipeToFormValues } from "@/components/recipes/recipe-form-dialog";
+import {
+  RecipeForm,
+  confirmDiscard,
+  recipeToFormValues,
+} from "@/components/recipes/recipe-form-dialog";
 import { getRecipeForModal, updateRecipe } from "@/lib/recipes/actions";
 import type { RecipeWithIngredients } from "@/lib/database/types";
 import type { RecipeImageUrls } from "@/lib/images/types";
@@ -34,6 +38,7 @@ export function RecipeEditModal({
   onClose: () => void;
 }) {
   const [state, setState] = useState<ModalState>({ status: "loading" });
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -54,7 +59,9 @@ export function RecipeEditModal({
     <Dialog
       open
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (next) return;
+        if (dirtyRef.current && !confirmDiscard()) return;
+        onClose();
       }}
     >
       <DialogContent className={FORM_DIALOG_CONTENT_CLASS}>
@@ -84,12 +91,22 @@ export function RecipeEditModal({
                 currentImage={state.imageUrls}
                 recipeTitle={state.recipe.title}
                 onClose={onClose}
+                onDirtyChange={(next) => {
+                  dirtyRef.current = next;
+                }}
               />
               <div className="text-center">
                 <Button
                   variant="link"
                   size="sm"
-                  render={<Link href={`/recipes/${recipeId}`} />}
+                  render={
+                    <Link
+                      href={`/recipes/${recipeId}`}
+                      onClick={(event) => {
+                        if (dirtyRef.current && !confirmDiscard()) event.preventDefault();
+                      }}
+                    />
+                  }
                 >
                   Open full page (view or delete)
                 </Button>

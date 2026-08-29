@@ -10,6 +10,7 @@ import {
   PREP_TIME_LABELS,
   STORAGE_TYPE_LABELS,
   CHILD_FRIENDLY_LABELS,
+  WEEKNIGHT_FAVOURITE_LABELS,
   PREPARATION_TYPE_LABELS,
   PREP_TIME_CATEGORIES,
 } from "@/lib/constants/categories";
@@ -23,6 +24,7 @@ type ColumnKey =
   | "dietType"
   | "storageType"
   | "childFriendly"
+  | "weeknightFavourite"
   | "preparationType"
   | "source";
 
@@ -69,6 +71,12 @@ const COLUMNS: Column[] = [
     key: "childFriendly",
     label: "Child-friendly",
     text: (r) => categoryLabel(CHILD_FRIENDLY_LABELS, r.childFriendly),
+    filter: "select",
+  },
+  {
+    key: "weeknightFavourite",
+    label: "Weeknight",
+    text: (r) => categoryLabel(WEEKNIGHT_FAVOURITE_LABELS, r.weeknightFavourite),
     filter: "select",
   },
   {
@@ -276,6 +284,9 @@ export function RecipeTable({
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {categoryLabel(CHILD_FRIENDLY_LABELS, recipe.childFriendly)}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {categoryLabel(WEEKNIGHT_FAVOURITE_LABELS, recipe.weeknightFavourite)}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {categoryLabel(PREPARATION_TYPE_LABELS, recipe.preparationType)}

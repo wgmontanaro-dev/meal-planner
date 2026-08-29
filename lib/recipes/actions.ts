@@ -63,6 +63,9 @@ export async function listRecipes(filters?: RecipeFilters): Promise<Recipe[]> {
   if (filters?.childFriendly) {
     query = query.eq("child_friendly", filters.childFriendly);
   }
+  if (filters?.weeknightFavourite) {
+    query = query.eq("weeknight_favourite", filters.weeknightFavourite);
+  }
   if (filters?.preparationType) {
     query = query.eq("preparation_type", filters.preparationType);
   }
@@ -171,6 +174,7 @@ function readFormValues(formData: FormData): RecipeFormValues {
     storageType: String(formData.get("storageType") ?? ""),
     dietType: String(formData.get("dietType") ?? ""),
     childFriendly: String(formData.get("childFriendly") ?? ""),
+    weeknightFavourite: String(formData.get("weeknightFavourite") ?? ""),
     preparationType: String(formData.get("preparationType") ?? ""),
     ingredients: readIngredientRows(formData),
   };
@@ -198,6 +202,7 @@ function parseRecipeForm(formData: FormData) {
       storageType: values.storageType,
       dietType: values.dietType,
       childFriendly: values.childFriendly,
+      weeknightFavourite: values.weeknightFavourite,
       preparationType: values.preparationType,
       ingredients,
     }),
@@ -284,6 +289,7 @@ export async function createRecipe(
       storageType: result.data.storageType,
       dietType: result.data.dietType,
       childFriendly: result.data.childFriendly,
+      weeknightFavourite: result.data.weeknightFavourite,
       preparationType: result.data.preparationType,
       instructions: result.data.instructions,
     },
@@ -329,6 +335,7 @@ function scrapedToFormValues(recipe: ScrapedRecipe): RecipeFormValues {
     storageType: "",
     dietType: recipe.dietType ?? "",
     childFriendly: "",
+    weeknightFavourite: "",
     preparationType: "",
     ingredients:
       recipe.ingredients.length > 0
@@ -404,6 +411,7 @@ export async function updateRecipe(
       storageType: result.data.storageType,
       dietType: result.data.dietType,
       childFriendly: result.data.childFriendly,
+      weeknightFavourite: result.data.weeknightFavourite,
       preparationType: result.data.preparationType,
       instructions: result.data.instructions,
     },

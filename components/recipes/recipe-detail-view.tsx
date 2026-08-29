@@ -7,6 +7,7 @@ import {
   PREP_TIME_LABELS,
   STORAGE_TYPE_LABELS,
   CHILD_FRIENDLY_LABELS,
+  WEEKNIGHT_FAVOURITE_LABELS,
   PREPARATION_TYPE_LABELS,
 } from "@/lib/constants/categories";
 import { stockImageFor } from "@/lib/recipes/stock-image";
@@ -82,6 +83,10 @@ export function RecipeDetailView({
         <div>
           <dt className="text-muted-foreground">Child-friendly</dt>
           <dd>{categoryLabel(CHILD_FRIENDLY_LABELS, recipe.childFriendly)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Weeknight favourite</dt>
+          <dd>{categoryLabel(WEEKNIGHT_FAVOURITE_LABELS, recipe.weeknightFavourite)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Preparation</dt>
