@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   deriveDietType,
   extractRecipeFromHtml,
+  looksLikeBotWall,
   mapCuisine,
   minutesToPrepTimeCategory,
   parseIsoDurationMinutes,
@@ -139,6 +140,26 @@ describe("splitIngredient", () => {
   });
 });
 
+describe("looksLikeBotWall", () => {
+  it("spots a Cloudflare interstitial", () => {
+    expect(
+      looksLikeBotWall(
+        `<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>` +
+          `<div id="cf-wrapper">Enable JavaScript and cookies to continue</div></body></html>`
+      )
+    ).toBe(true);
+  });
+
+  it("passes a normal recipe page through", () => {
+    expect(
+      looksLikeBotWall(
+        `<!DOCTYPE html><html><head><title>Spaghetti Aglio e Olio</title>` +
+          `<script type="application/ld+json">{"@type":"Recipe"}</script></head><body>...</body></html>`
+      )
+    ).toBe(false);
+  });
+});
+
 describe("extractRecipeFromHtml", () => {
   const html = `
     <html><head>
@@ -270,6 +291,29 @@ describe("extractRecipeFromHtml", () => {
       "Plain flour",
       "Eggs",
       "Salt",
+    ]);
+  });
+
+  it("scrapes a run of plain <div> lines after an 'Ingredients' label (old blog posts)", () => {
+    const oldBlog = `
+      <html><body><div class="post-body">
+        <div><span>Some chatty intro paragraph about the dish and its history.</span></div>
+        <div><span>Ingredients:</span></div>
+        <div><span>1 pound dry spaghetti</span></div>
+        <div><span>salt and pepper to taste</span></div>
+        <div><span>6 cloves garlic, sliced thin</span></div>
+        <div><span>1/2 cup olive oil</span></div>
+        <div><span><br /></span></div>
+        <div><span>*Not traditional, but you can add a knob of butter at the end for extra richness if you like a slightly silkier sauce.</span></div>
+        <div><span><a href="/full">View the complete recipe</a></span></div>
+      </div></body></html>`;
+    const result = extractRecipeFromHtml(oldBlog, "https://x.test/aglio");
+    expect(result).not.toBeNull();
+    expect(result!.recipe.ingredients.map((i) => i.name)).toEqual([
+      "Dry spaghetti",
+      "Salt and pepper to taste",
+      "Garlic, sliced thin",
+      "Olive oil",
     ]);
   });
 

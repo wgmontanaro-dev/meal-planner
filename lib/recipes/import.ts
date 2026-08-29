@@ -486,10 +486,31 @@ function dedupeLines(lines: string[]): string[] {
 const PLUGIN_INGREDIENT_CLASS =
   /wprm-recipe-ingredient|tasty-recipes-ingredient|mv-create-ingredients|structured-ingredients__list-item|recipe-ingredients?__item|ingredient-item|ingredients?-list-item/i;
 
+const QUANTITY_START =
+  /^(?:\d|½|¼|¾|⅓|⅔|⅛|a |an |one |two |three |four |five |six |half |quarter |pinch |handful |dash |splash |to taste)/i;
+
+/** Once a run of ingredient-shaped lines has started, decide whether `text`
+ *  is still one of them or the run has spilled into notes / method prose. */
+function stillIngredient(text: string): boolean {
+  const t = text.replace(/^[*•·▢●○\-–—\s]+/, "").trim();
+  if (!t) return true; // blank line — handled separately by the caller
+  if (/^(?:note|tip|variation|serves|makes|yield|prep time|cook time|total time)\b\s*[:-]/i.test(t)) {
+    return false;
+  }
+  if (/\b(?:view|see|get|print|full|complete|printable)\b.{0,25}\b(?:recipe|instructions?|directions?|method)\b/i.test(t)) {
+    return false;
+  }
+  if (QUANTITY_START.test(t)) return true;
+  return t.length <= 60; // short line with no leading amount is still plausibly an ingredient
+}
+
 /**
  * Best-effort ingredient scrape from raw HTML, used only when neither JSON-LD
- * nor microdata carried a list. Tries recipe-card plugin markup first, then
- * the first <ul>/<ol> that follows an "Ingredients" heading.
+ * nor microdata carried a list. In order:
+ *   1. recipe-card plugin markup (`<li class="…ingredient…">`)
+ *   2. the first <ul>/<ol> after an "Ingredients" heading
+ *   3. a run of sibling <div>/<p>/<li> blocks after an "Ingredients" label
+ *      (old hand-formatted blog posts that never used a list at all)
  */
 function htmlListIngredients(html: string): string[] {
   const pluginItems = [...html.matchAll(/<li\b[^>]*class=["']([^"']*)["'][^>]*>([\s\S]*?)<\/li>/gi)]
@@ -513,6 +534,36 @@ function htmlListIngredients(html: string): string[] {
       .filter(Boolean);
     if (items.length >= 2) return dedupeLines(items);
   }
+
+  // 3. An "Ingredients" label element (often just a <span> or <b>) followed by
+  //    a run of plain <div>/<p> lines — no list markup anywhere.
+  const labelRe =
+    /<(span|b|strong|em|i|p|h[1-6]|div|td|th|dt|label|font)\b[^>]*>\s*(?:<[^>]*>\s*)*ingredients?\s*:?\s*(?:<\/[a-z]+>\s*)*<\/\1>/gi;
+  while ((match = labelRe.exec(html)) !== null) {
+    const rest = html.slice(match.index + match[0].length, match.index + match[0].length + 12000);
+    const blockRe = /<(div|p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+    const collected: string[] = [];
+    let blanks = 0;
+    let block: RegExpExecArray | null;
+    while ((block = blockRe.exec(rest)) !== null && collected.length < 40) {
+      const text = stripTags(block[2]);
+      if (!text) {
+        blanks += 1;
+        if (blanks >= 2 && collected.length) break;
+        continue;
+      }
+      blanks = 0;
+      if (/^(?:method|instructions?|directions?|preparation|steps|procedure)\b/i.test(text)) break;
+      if (!stillIngredient(text)) {
+        if (collected.length) break;
+        continue;
+      }
+      collected.push(text);
+    }
+    const cleaned = dedupeLines(collected).filter((line) => !isJunkIngredient(line));
+    if (cleaned.length >= 2) return cleaned;
+  }
+
   return [];
 }
 
@@ -625,6 +676,33 @@ export function extractRecipeFromHtml(
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Thrown when a site actively refuses automated access (bot wall), as
+ *  opposed to a transient network error. Retrying it is pointless. */
+export class BlockedError extends Error {
+  constructor(message = "blocked") {
+    super(message);
+    this.name = "BlockedError";
+  }
+}
+
+// Status codes that mean "we see you and we're saying no", not "try again".
+const BLOCKED_STATUSES = new Set([401, 403, 429, 451]);
+
+/** True when an HTTP 200 body is really a Cloudflare / bot-check interstitial. */
+export function looksLikeBotWall(html: string): boolean {
+  const head = html.slice(0, 4000).toLowerCase();
+  return (
+    head.includes("just a moment...") ||
+    head.includes("enable javascript and cookies to continue") ||
+    head.includes("attention required! | cloudflare") ||
+    head.includes("/cdn-cgi/challenge-platform/") ||
+    head.includes("cf-browser-verification") ||
+    head.includes("please verify you are a human") ||
+    head.includes("px-captcha") ||
+    head.includes("verifying you are human")
+  );
+}
+
 async function fetchOnce(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
@@ -639,8 +717,11 @@ async function fetchOnce(url: string): Promise<string> {
     redirect: "follow",
     signal: AbortSignal.timeout(20000),
   });
+  if (BLOCKED_STATUSES.has(res.status)) throw new BlockedError(`HTTP ${res.status}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+  const html = await res.text();
+  if (looksLikeBotWall(html)) throw new BlockedError("challenge page");
+  return html;
 }
 
 async function fetchViaWayback(url: string): Promise<string> {
@@ -656,17 +737,25 @@ async function fetchViaWayback(url: string): Promise<string> {
 
 async function fetchHtml(url: string): Promise<string> {
   let lastError: unknown;
+  let blocked = false;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       return await fetchOnce(url);
     } catch (error) {
       lastError = error;
+      if (error instanceof BlockedError) {
+        // Hammering a bot wall won't change its mind — go straight to the
+        // archived-copy fallback.
+        blocked = true;
+        break;
+      }
       if (attempt < 3) await sleep(1000 * attempt);
     }
   }
   try {
     return await fetchViaWayback(url);
   } catch {
+    if (blocked) throw new BlockedError();
     throw lastError;
   }
 }
@@ -695,7 +784,14 @@ export async function importRecipeFromUrl(rawUrl: string): Promise<ImportOutcome
   let html: string;
   try {
     html = await fetchHtml(url);
-  } catch {
+  } catch (error) {
+    if (error instanceof BlockedError) {
+      const host = new URL(url).hostname.replace(/^www\./, "");
+      return {
+        ok: false,
+        reason: `${host} blocks automated importing and no archived copy was available. Open the recipe and paste the ingredients in, or try another source — most recipe blogs and sites like BBC Good Food import fine.`,
+      };
+    }
     return {
       ok: false,
       reason: "Couldn’t open that page. Check the address, or add the recipe manually.",
