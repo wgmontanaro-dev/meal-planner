@@ -1,11 +1,14 @@
 // Best-effort recipe extraction from a source web page.
 //
 // The parser leans on schema.org `Recipe` structured data (JSON-LD, then
-// microdata), which nearly every mainstream recipe site publishes. Ingredients
-// and instructions are the priority; title, summary, image, prep time, cuisine
-// and diet type are filled in when the page exposes them. Pages with no
-// recognisable recipe (many video pages, forum threads, JS-only sites) return
-// a failure the caller can turn into "enter it manually instead".
+// microdata), which nearly every mainstream recipe site publishes; when a page
+// carries neither it falls back to scraping a plain-HTML ingredient list
+// (recipe-card plugin markup, or the first list after an "Ingredients"
+// heading). Ingredients and instructions are the priority; title, summary,
+// image, prep time, cuisine and diet type are filled in when the page exposes
+// them. Pages with no recognisable recipe (many video pages, forum threads,
+// JS-only sites) return a failure the caller can turn into "enter it manually
+// instead".
 //
 // This module performs network I/O but holds no server-only imports, so it can
 // be unit-tested directly.
@@ -138,9 +141,11 @@ function normaliseIngredientLine(raw: string): string {
 }
 
 function isQuantityToken(token: string, atStart: boolean): boolean {
-  const t = token.toLowerCase().replace(/[),.]+$/, "");
+  const t = token.toLowerCase().replace(/^[("']+/, "").replace(/[)"',.]+$/, "");
   if (!t) return false;
   if (NUMERIC.test(t) && /\d/.test(t)) return true;
+  // Numeric range, e.g. "1-2", "1.5–2", "6–8".
+  if (/^\d[\d.,/]*[-–—]\d[\d.,/]*$/.test(t)) return true;
   if (/^\d/.test(t) && /^[\d/.]+$/.test(t)) return true;
   if (UNITS.has(t)) return true;
   if (SIZE_WORDS.has(t)) return true;
@@ -292,25 +297,30 @@ export function deriveDietType(
 
 type JsonRecord = Record<string, unknown>;
 
-function collectRecipeNodes(node: unknown, out: JsonRecord[]): void {
+function collectRecipeNodes(node: unknown, out: JsonRecord[], depth = 0): void {
+  if (depth > 6) return;
   if (Array.isArray(node)) {
-    for (const item of node) collectRecipeNodes(item, out);
+    for (const item of node) collectRecipeNodes(item, out, depth + 1);
     return;
   }
   if (!node || typeof node !== "object") return;
   const record = node as JsonRecord;
-  if (Array.isArray(record["@graph"])) collectRecipeNodes(record["@graph"], out);
   const type = record["@type"];
   const types = Array.isArray(type) ? type : [type];
   if (types.some((t) => typeof t === "string" && t.toLowerCase() === "recipe")) {
     out.push(record);
+  }
+  // Recurse into every nested object/array (@graph, mainEntity, hasPart, …) so
+  // a Recipe that isn't at the top level is still found.
+  for (const value of Object.values(record)) {
+    if (value && typeof value === "object") collectRecipeNodes(value, out, depth + 1);
   }
 }
 
 function jsonLdRecipeNodes(html: string): JsonRecord[] {
   const scripts = [
     ...html.matchAll(
-      /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+      /<script[^>]*type=["']application\/ld\+json(?:;[^"']*)?["'][^>]*>([\s\S]*?)<\/script>/gi
     ),
   ];
   const nodes: JsonRecord[] = [];
@@ -338,11 +348,19 @@ function ingredientListFromNode(node: JsonRecord): string[] {
   const list = node.recipeIngredient ?? node.ingredients;
   if (Array.isArray(list) && list.length) {
     return list
-      .map((x) => (typeof x === "string" ? x : String((x as JsonRecord)?.name ?? "")))
+      .map((x) =>
+        typeof x === "string"
+          ? x
+          : String((x as JsonRecord)?.name ?? (x as JsonRecord)?.text ?? "")
+      )
+      .map((s) => stripTags(s)) // structured data sometimes embeds <a>/<span>/entities
       .filter(Boolean);
   }
   if (typeof list === "string" && list.trim()) {
-    return list.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    return list
+      .split(/\r?\n/)
+      .map((s) => stripTags(s))
+      .filter(Boolean);
   }
   return [];
 }
@@ -432,6 +450,72 @@ function microdataInstructions(html: string): string | null {
   return parts.length ? clip(parts.join("\n\n"), RECIPE_INSTRUCTIONS_MAX_LENGTH) : null;
 }
 
+// ---------------------------------------------------------------------------
+// Plain-HTML ingredient fallback (pages with no structured data)
+// ---------------------------------------------------------------------------
+
+// Whole-line section headings and noise that show up as list items but are
+// not ingredients.
+const SECTION_HEADER =
+  /^(?:for (?:the|your) .{1,40}|to (?:serve|garnish|finish|decorate|taste)|dressing|sauce|marinade|topping|filling|garnish|glaze|optional|equipment|you(?:'| wi)ll need|ingredients?|method|instructions?|directions?)\s*:?\s*$/i;
+
+/** True for a list item that is a section heading or noise, not an ingredient. */
+function isJunkIngredient(line: string): boolean {
+  const t = line.trim().replace(/\s+/g, " ");
+  if (t.length < 2) return true;
+  if (/\d/.test(t)) return false; // has a number → treat as a real ingredient
+  if (SECTION_HEADER.test(t)) return true;
+  return /:\s*$/.test(t) && t.length <= 40;
+}
+
+function dedupeLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of lines) {
+    const key = line.toLowerCase().replace(/\s+/g, " ").trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(line);
+    }
+  }
+  return out;
+}
+
+// class= substrings used by the common recipe-card plugins for an ingredient
+// row (WP Recipe Maker, Tasty Recipes, Mediavine Create, Allrecipes, generic).
+const PLUGIN_INGREDIENT_CLASS =
+  /wprm-recipe-ingredient|tasty-recipes-ingredient|mv-create-ingredients|structured-ingredients__list-item|recipe-ingredients?__item|ingredient-item|ingredients?-list-item/i;
+
+/**
+ * Best-effort ingredient scrape from raw HTML, used only when neither JSON-LD
+ * nor microdata carried a list. Tries recipe-card plugin markup first, then
+ * the first <ul>/<ol> that follows an "Ingredients" heading.
+ */
+function htmlListIngredients(html: string): string[] {
+  const pluginItems = [...html.matchAll(/<li\b[^>]*class=["']([^"']*)["'][^>]*>([\s\S]*?)<\/li>/gi)]
+    .filter((m) => PLUGIN_INGREDIENT_CLASS.test(m[1]))
+    .map((m) => stripTags(m[2]))
+    .filter(Boolean);
+  if (pluginItems.length >= 2) return dedupeLines(pluginItems);
+
+  const headingRe = /<(h[1-6]|p|strong|b)\b[^>]*>((?:(?!<\/\1>)[\s\S])*?)<\/\1>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = headingRe.exec(html)) !== null) {
+    if (!/^ingredients?\b/i.test(stripTags(match[2]))) continue;
+    const after = html.slice(
+      match.index + match[0].length,
+      match.index + match[0].length + 20000
+    );
+    const list = after.match(/<(ul|ol)\b[^>]*>([\s\S]*?)<\/\1>/i);
+    if (!list) continue;
+    const items = [...list[2].matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)]
+      .map((m) => stripTags(m[1]))
+      .filter(Boolean);
+    if (items.length >= 2) return dedupeLines(items);
+  }
+  return [];
+}
+
 function absoluteUrl(candidate: string | null, base: string): string | null {
   if (!candidate) return null;
   try {
@@ -450,12 +534,25 @@ export function extractRecipeFromHtml(
   html: string,
   sourceUrl: string
 ): { recipe: ScrapedRecipe; warnings: string[] } | null {
-  const node = jsonLdRecipeNodes(html)[0] ?? null;
+  // Prefer the JSON-LD Recipe node that actually carries an ingredient list —
+  // pages sometimes ship a stub Recipe node first (or several).
+  const nodes = jsonLdRecipeNodes(html);
+  let node: JsonRecord | null = nodes[0] ?? null;
+  let bestCount = node ? ingredientListFromNode(node).length : 0;
+  for (const candidate of nodes.slice(1)) {
+    const count = ingredientListFromNode(candidate).length;
+    if (count > bestCount) {
+      node = candidate;
+      bestCount = count;
+    }
+  }
   const warnings: string[] = [];
 
-  const rawIngredients = node ? ingredientListFromNode(node) : [];
-  const ingredientLines = rawIngredients.length ? rawIngredients : microdataIngredients(html);
-  const ingredients = ingredientLines
+  let ingredientLines = node ? ingredientListFromNode(node) : [];
+  if (ingredientLines.length === 0) ingredientLines = microdataIngredients(html);
+  if (ingredientLines.length === 0) ingredientLines = htmlListIngredients(html);
+  const ingredients = dedupeLines(ingredientLines)
+    .filter((line) => !isJunkIngredient(line))
     .map(splitIngredient)
     .filter((x): x is ScrapedIngredient => x != null);
 

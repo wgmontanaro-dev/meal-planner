@@ -120,6 +120,23 @@ describe("splitIngredient", () => {
       name: "Salt and pepper, to taste",
     });
   });
+
+  it("keeps a numeric range as the quantity", () => {
+    expect(splitIngredient("1-2 tbsp olive oil")).toEqual({
+      quantity: "1-2 tbsp",
+      name: "Olive oil",
+    });
+    expect(splitIngredient("6–8 cherry tomatoes")).toEqual({
+      quantity: "6–8",
+      name: "Cherry tomatoes",
+    });
+  });
+
+  it("absorbs a parenthetical amount into the quantity", () => {
+    const result = splitIngredient("1 (400g) can chickpeas, drained");
+    expect(result?.name).toBe("Chickpeas, drained");
+    expect(result?.quantity).toMatch(/400/);
+  });
 });
 
 describe("extractRecipeFromHtml", () => {
@@ -181,5 +198,92 @@ describe("extractRecipeFromHtml", () => {
     expect(result).not.toBeNull();
     expect(result!.recipe.ingredients).toHaveLength(2);
     expect(result!.recipe.instructions).toBe("Toss everything together.");
+  });
+
+  it("strips HTML embedded in JSON-LD ingredient strings", () => {
+    const withMarkup = `
+      <script type="application/ld+json">
+      {
+        "@type": "Recipe",
+        "name": "Test",
+        "recipeIngredient": [
+          "200g <a href=\\"/flour\\">plain flour</a>",
+          "1 tbsp&nbsp;caster sugar"
+        ],
+        "recipeInstructions": "Mix."
+      }
+      </script>`;
+    const result = extractRecipeFromHtml(withMarkup, "https://x.test/t");
+    expect(result!.recipe.ingredients).toEqual([
+      { quantity: "200 g", name: "Plain flour" },
+      { quantity: "1 tbsp", name: "Caster sugar" },
+    ]);
+  });
+
+  it("picks the JSON-LD Recipe node that has the ingredient list", () => {
+    const twoNodes = `
+      <script type="application/ld+json">
+      [
+        { "@type": "Recipe", "name": "Stub" },
+        {
+          "@type": "Recipe",
+          "name": "Real",
+          "recipeIngredient": ["2 eggs", "100g sugar"],
+          "recipeInstructions": "Beat."
+        }
+      ]
+      </script>`;
+    const result = extractRecipeFromHtml(twoNodes, "https://x.test/t");
+    expect(result!.recipe.ingredients).toHaveLength(2);
+  });
+
+  it("drops section-heading lines from the ingredient list", () => {
+    const withHeading = `
+      <script type="application/ld+json">
+      {
+        "@type": "Recipe",
+        "name": "Stir fry",
+        "recipeIngredient": ["For the sauce", "2 tbsp soy sauce", "1 tbsp honey"],
+        "recipeInstructions": "Cook."
+      }
+      </script>`;
+    const result = extractRecipeFromHtml(withHeading, "https://x.test/t");
+    const names = result!.recipe.ingredients.map((i) => i.name);
+    expect(names).toEqual(["Soy sauce", "Honey"]);
+  });
+
+  it("scrapes a plain <ul> after an Ingredients heading when there is no structured data", () => {
+    const plain = `
+      <html><body>
+        <h2>Ingredients</h2>
+        <ul>
+          <li>200g plain flour</li>
+          <li>2 large eggs</li>
+          <li>A pinch of salt</li>
+        </ul>
+        <h2>Method</h2>
+        <ol><li>Mix it all.</li></ol>
+      </body></html>`;
+    const result = extractRecipeFromHtml(plain, "https://x.test/pancakes");
+    expect(result).not.toBeNull();
+    expect(result!.recipe.ingredients.map((i) => i.name)).toEqual([
+      "Plain flour",
+      "Eggs",
+      "Salt",
+    ]);
+  });
+
+  it("scrapes recipe-card plugin ingredient markup", () => {
+    const wprm = `
+      <html><body>
+        <ul class="wprm-recipe-ingredients">
+          <li class="wprm-recipe-ingredient"><span>200</span> <span>g</span> <span>flour</span></li>
+          <li class="wprm-recipe-ingredient">2 eggs</li>
+        </ul>
+      </body></html>`;
+    const result = extractRecipeFromHtml(wprm, "https://x.test/cake");
+    expect(result).not.toBeNull();
+    expect(result!.recipe.ingredients).toHaveLength(2);
+    expect(result!.recipe.ingredients[0].name).toBe("Flour");
   });
 });
