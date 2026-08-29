@@ -6,6 +6,7 @@ import type {
   StorageType,
   TernaryCategory,
 } from "@/lib/constants/categories";
+import type { RecipeImageUrls } from "@/lib/images/types";
 
 export type MealSlotState = {
   status: "idle" | "error" | "success";
@@ -16,9 +17,11 @@ export type MealSlotState = {
 export const initialMealSlotState: MealSlotState = { status: "idle" };
 
 // Compact projection of a Recipe for the meal-slot recipe picker
-// (SPEC.md section 16.1) — deliberately excludes instructions, source URL
-// and image metadata so a large recipe collection stays lightweight in the
-// browser (SPEC.md section 27).
+// (SPEC.md section 16.1) — excludes instructions and source URL so a large
+// recipe collection stays lightweight in the browser (SPEC.md section 27).
+// `imageUrls` carries short-lived signed thumbnail URLs (or null) so the
+// picker can show the same photo / stock-illustration thumbnail as the
+// recipe library.
 export type RecipeSummary = {
   id: string;
   title: string;
@@ -29,4 +32,5 @@ export type RecipeSummary = {
   childFriendly: TernaryCategory | null;
   weeknightFavourite: TernaryCategory | null;
   preparationType: PreparationType | null;
+  imageUrls: RecipeImageUrls | null;
 };

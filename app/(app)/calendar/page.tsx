@@ -11,6 +11,7 @@ import {
 import { MonthNavigation } from "@/components/calendar/month-navigation";
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { ShoppingListDialog } from "@/components/calendar/shopping-list-dialog";
+import { signRecipeImageUrls } from "@/lib/images/urls";
 import type { RecipeSummary } from "@/lib/meal-plans/types";
 
 export const metadata: Metadata = {
@@ -63,17 +64,20 @@ export default async function CalendarPage(props: PageProps<"/calendar">) {
     listRecipes(),
   ]);
 
-  const recipeSummaries: RecipeSummary[] = recipes.map((recipe) => ({
-    id: recipe.id,
-    title: recipe.title,
-    prepTimeCategory: recipe.prepTimeCategory,
-    cuisine: recipe.cuisine,
-    storageType: recipe.storageType,
-    dietType: recipe.dietType,
-    childFriendly: recipe.childFriendly,
-    weeknightFavourite: recipe.weeknightFavourite,
-    preparationType: recipe.preparationType,
-  }));
+  const recipeSummaries: RecipeSummary[] = await Promise.all(
+    recipes.map(async (recipe) => ({
+      id: recipe.id,
+      title: recipe.title,
+      prepTimeCategory: recipe.prepTimeCategory,
+      cuisine: recipe.cuisine,
+      storageType: recipe.storageType,
+      dietType: recipe.dietType,
+      childFriendly: recipe.childFriendly,
+      weeknightFavourite: recipe.weeknightFavourite,
+      preparationType: recipe.preparationType,
+      imageUrls: await signRecipeImageUrls(recipe.imageStoragePath),
+    }))
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 sm:p-8">

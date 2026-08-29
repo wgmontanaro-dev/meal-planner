@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { FilterFields, type DraftFilters } from "@/components/recipes/filter-fields";
 import { RecipeQuickView } from "@/components/calendar/recipe-quick-view";
@@ -22,12 +21,8 @@ import { setManualMeal, setRecipeMeal, removeMeal } from "@/lib/meal-plans/actio
 import { initialMealSlotState, type RecipeSummary } from "@/lib/meal-plans/types";
 import { MANUAL_TITLE_MAX_LENGTH } from "@/lib/validation/meal-plan";
 import { matchesFilters } from "@/lib/recipes/filter";
+import { stockImageFor } from "@/lib/recipes/stock-image";
 import { formatDateLong } from "@/lib/dates/calendar";
-import {
-  CUISINE_LABELS,
-  DIET_TYPE_LABELS,
-  PREP_TIME_LABELS,
-} from "@/lib/constants/categories";
 import type { MealPlanEntryWithRecipe } from "@/lib/database/types";
 
 type DialogMode = "choose" | "actions" | "pick-recipe" | "manual-edit" | "view-recipe";
@@ -126,34 +121,31 @@ function RecipePickerList({
           No recipes match your search and filters.
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {visibleRecipes.map((recipe) => (
-            <li key={recipe.id}>
-              <Button
-                type="submit"
-                name="recipeId"
-                value={recipe.id}
-                variant="outline"
-                disabled={pending}
-                className="h-auto w-full flex-col items-start gap-1 whitespace-normal px-3 py-2 text-left"
-              >
-                <span className="font-medium">{recipe.title}</span>
-                <span className="flex flex-wrap gap-1">
-                  {recipe.prepTimeCategory ? (
-                    <Badge variant="outline">
-                      {PREP_TIME_LABELS[recipe.prepTimeCategory]}
-                    </Badge>
-                  ) : null}
-                  {recipe.cuisine ? (
-                    <Badge variant="outline">{CUISINE_LABELS[recipe.cuisine]}</Badge>
-                  ) : null}
-                  {recipe.dietType ? (
-                    <Badge variant="outline">{DIET_TYPE_LABELS[recipe.dietType]}</Badge>
-                  ) : null}
-                </span>
-              </Button>
-            </li>
-          ))}
+        <ul className="grid grid-cols-2 gap-2">
+          {visibleRecipes.map((recipe) => {
+            const thumbSrc = recipe.imageUrls?.thumbUrl ?? stockImageFor(recipe).src;
+            return (
+              <li key={recipe.id}>
+                <button
+                  type="submit"
+                  name="recipeId"
+                  value={recipe.id}
+                  disabled={pending}
+                  className="flex h-full w-full flex-col gap-1.5 rounded-xl border border-border bg-card p-2 text-left transition-colors hover:border-primary focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-60"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed Storage URL or bundled SVG */}
+                  <img
+                    src={thumbSrc}
+                    alt=""
+                    className="h-16 w-full rounded-md object-cover"
+                  />
+                  <span className="line-clamp-2 text-xs font-medium text-foreground">
+                    {recipe.title}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </form>
