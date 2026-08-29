@@ -27,6 +27,7 @@ import { RecipeImageThumbnail } from "@/components/recipes/recipe-image";
 import { FORM_DIALOG_CONTENT_CLASS } from "@/components/shared/dialog-classes";
 import {
   createRecipe,
+  importRecipeFromTextAction,
   importRecipeFromUrlAction,
   updateRecipe,
 } from "@/lib/recipes/actions";
@@ -523,14 +524,17 @@ type ImportedPayload = {
 type AddStep =
   | { kind: "start" }
   | { kind: "manual" }
+  | { kind: "paste" }
   | ({ kind: "imported" } & ImportedPayload);
 
-/** First screen of the Add Recipe dialog: paste a link, or switch to manual. */
+/** First screen of the Add Recipe dialog: import from a link, paste text, or go manual. */
 function AddRecipeStart({
   onImported,
+  onPaste,
   onManual,
 }: {
   onImported: (payload: ImportedPayload) => void;
+  onPaste: () => void;
   onManual: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -583,10 +587,67 @@ function AddRecipeStart({
         <Separator className="flex-1" />
       </div>
 
-      <Button type="button" variant="outline" onClick={onManual} className="self-start">
-        Enter the details manually
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="button" variant="outline" onClick={onPaste} className="sm:flex-1">
+          Paste recipe text
+        </Button>
+        <Button type="button" variant="outline" onClick={onManual} className="sm:flex-1">
+          Enter the details manually
+        </Button>
+      </div>
     </div>
+  );
+}
+
+/** Paste-text step: derive the recipe from copied text (page or PDF). */
+function PasteRecipeStart({
+  onImported,
+}: {
+  onImported: (payload: ImportedPayload) => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    importRecipeFromTextAction,
+    initialImportRecipeState
+  );
+
+  useEffect(() => {
+    if (state.status === "success" && state.values) {
+      onImported({
+        values: state.values,
+        importedImageUrl: state.importedImageUrl ?? null,
+        warnings: state.warnings ?? [],
+      });
+    }
+  }, [state, onImported]);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Label htmlFor="import-text">Recipe text</Label>
+      <Textarea
+        id="import-text"
+        name="text"
+        rows={12}
+        autoFocus
+        defaultValue={state.text ?? ""}
+        placeholder={
+          "Spaghetti Aglio e Olio\n\nIngredients\n400g spaghetti\n6 garlic cloves, sliced\n120ml olive oil\n1 tsp chilli flakes\n\nMethod\n1. Cook the spaghetti…\n2. Gently fry the garlic…"
+        }
+        aria-invalid={state.status === "error"}
+        aria-describedby={state.status === "error" ? "import-text-error" : "import-text-hint"}
+      />
+      <p id="import-text-hint" className="text-xs text-muted-foreground">
+        Paste the lot — title, ingredients and method. Section headings like
+        “Ingredients” and “Method” help. You review everything before saving.
+      </p>
+      {state.status === "error" ? (
+        <p id="import-text-error" role="alert" className="text-sm text-destructive">
+          {state.message}
+        </p>
+      ) : null}
+      <Button type="submit" disabled={pending} className="self-start">
+        {pending ? "Reading…" : "Extract recipe"}
+      </Button>
+    </form>
   );
 }
 
@@ -633,10 +694,12 @@ export function AddRecipeFormDialog({
 
   const description =
     step.kind === "imported"
-      ? "Here’s what we could read from the page. Check it over, then save."
+      ? "Here’s what we could pull out. Check it over, then save."
       : step.kind === "manual"
         ? "Add a recipe to the shared library so it can be planned on the calendar."
-        : "Import a recipe from a web page, or enter the details yourself.";
+        : step.kind === "paste"
+          ? "Paste recipe text copied from a page or a PDF and we’ll split it up."
+          : "Import from a web page, paste the text, or enter the details yourself.";
 
   return (
     <Dialog open={isOpen} onOpenChange={changeOpen}>
@@ -660,7 +723,13 @@ export function AddRecipeFormDialog({
           </DialogHeader>
 
           {!isOpen ? null : step.kind === "start" ? (
-            <AddRecipeStart onImported={handleImported} onManual={() => setStep({ kind: "manual" })} />
+            <AddRecipeStart
+              onImported={handleImported}
+              onPaste={() => setStep({ kind: "paste" })}
+              onManual={() => setStep({ kind: "manual" })}
+            />
+          ) : step.kind === "paste" ? (
+            <PasteRecipeStart onImported={handleImported} />
           ) : step.kind === "imported" ? (
             <>
               {step.warnings.length > 0 ? (

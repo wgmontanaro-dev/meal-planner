@@ -840,6 +840,13 @@ On mobile, this may be:
 - A prominent page button, or
 - A labelled floating action button that does not obscure content.
 
+> **Amended after MVP:** the Add Recipe dialogue opens on a chooser with
+> three ways in: import from a source URL, **paste recipe text** (copied
+> from a page or a PDF — a heading-tolerant plain-text parser derives the
+> title, ingredients and method locally, with no network, so it also
+> covers sites that block importing), or enter the details by hand. All
+> three land on the same review form before anything is saved.
+
 ### 13.2 Form sections
 
 The recipe form should be divided into understandable sections:

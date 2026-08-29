@@ -671,6 +671,193 @@ export function extractRecipeFromHtml(
 }
 
 // ---------------------------------------------------------------------------
+// Pasted plain text -> ScrapedRecipe
+// ---------------------------------------------------------------------------
+//
+// For text copied out of a page or a PDF (e.g. when the site blocks
+// importing). Splits the paste into title / ingredients / method, leaning on
+// "Ingredients" and "Method" section headings when they exist and falling
+// back to line shape when they don't.
+
+const HEADING_INGREDIENTS = /^(?:ingredients?|what you(?:'ll| will)? need|you(?:'ll| will)? need)$/;
+const HEADING_METHOD =
+  /^(?:methods?|instructions?|directions?|preparation|steps?|procedure|to make|how to make(?: it)?|the method)$/;
+const HEADING_TRAILER = /^(?:notes?|tips?|to serve|variations?|storage|nutrition|equipment)$/;
+
+/** Strips markdown / bullet / numbering / punctuation noise off a heading candidate. */
+function bareHeading(line: string): string {
+  return line
+    .replace(/^[#>*_\s\d.):-]+/, "")
+    .replace(/[#*_:：.\s]+$/, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** Scaffolding lines that are never the title: "Serves 4", "Prep 10 mins", "By Jane". */
+function looksLikeMeta(line: string): boolean {
+  return (
+    /^(?:serves?|makes?|yield|servings?|prep(?:aration)?(?: time)?|cook(?:ing)?(?: time)?|total(?: time)?|ready in|difficulty|by |recipe by|adapted from|source|photograph|photo by)\b/i.test(
+      line
+    ) || /^\d+\s*(?:mins?|minutes?|hours?|hrs?|servings?|people|portions?)\b/i.test(line)
+  );
+}
+
+function titleCaseIfShouting(line: string): string {
+  const letters = line.replace(/[^a-z]/gi, "");
+  if (letters.length >= 4 && letters === letters.toUpperCase()) {
+    return line.toLowerCase().replace(/\b([a-z])/g, (_, c: string) => c.toUpperCase());
+  }
+  return line;
+}
+
+/** A line from a heading-less paste that reads like an ingredient, not prose. */
+function looksLikeIngredientLine(line: string): boolean {
+  const t = line.replace(/^[-*•·▢●○–—\s]+/, "").trim();
+  if (!t) return false;
+  if (/[.!?]["')\]]?$/.test(t) && /\s/.test(t)) return false; // a sentence -> method prose
+  if (QUANTITY_START.test(t)) return true;
+  return t.length <= 45 && !isJunkIngredient(t);
+}
+
+/** "Prep: 15 mins", "Total time 1 hr 20 min", "Ready in 45 minutes". */
+function prepMinutesFromText(text: string): number | null {
+  const m = text.match(
+    /(?:prep(?:aration)?|total|cook(?:ing)?|ready in|hands[- ]on)[^\n]{0,20}?(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m)\b(?:[^\n]{0,10}?(\d+)\s*(?:minutes?|mins?|m)\b)?/i
+  );
+  if (!m) return null;
+  const n1 = Number(m[1]);
+  const isHours = /^h/i.test(m[2]);
+  const total = (isHours ? n1 * 60 : n1) + (isHours && m[3] ? Number(m[3]) : 0);
+  return total > 0 ? total : null;
+}
+
+/** Best-effort split of a free-text recipe paste into a `ScrapedRecipe`. */
+export function parseRecipeText(
+  input: string
+): { recipe: ScrapedRecipe; warnings: string[] } | null {
+  const lines = decodeEntities(input)
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.trim());
+  while (lines.length && !lines[0]) lines.shift();
+  while (lines.length && !lines[lines.length - 1]) lines.pop();
+  if (lines.length === 0) return null;
+
+  let ingredientsAt = -1;
+  let methodAt = -1;
+  let trailerAt = -1;
+  lines.forEach((line, i) => {
+    const h = bareHeading(line);
+    if (!h) return;
+    if (ingredientsAt === -1 && HEADING_INGREDIENTS.test(h)) ingredientsAt = i;
+    else if (methodAt === -1 && ingredientsAt !== -1 && i > ingredientsAt && HEADING_METHOD.test(h)) {
+      methodAt = i;
+    } else if (trailerAt === -1 && methodAt !== -1 && i > methodAt && HEADING_TRAILER.test(h)) {
+      trailerAt = i;
+    }
+  });
+
+  // --- Title + optional summary sentence, from the lines above the
+  //     ingredients heading (or above the first ingredient-shaped line).
+  const titleCeiling =
+    ingredientsAt !== -1
+      ? ingredientsAt
+      : (() => {
+          const idx = lines.findIndex((l, i) => i > 0 && l !== "" && looksLikeIngredientLine(l));
+          return idx === -1 ? Math.min(lines.length, 3) : idx;
+        })();
+  let title: string | null = null;
+  let summary: string | null = null;
+  for (let i = 0; i < titleCeiling; i += 1) {
+    const line = lines[i];
+    if (!line || looksLikeMeta(line)) continue;
+    if (!title) {
+      title = titleCaseIfShouting(line).replace(/\s+recipe$/i, "").trim();
+    } else if (!summary && /\s/.test(line) && /[.!?]$/.test(line) && line.length > 20) {
+      summary = line;
+    }
+  }
+
+  // --- Ingredient lines.
+  let ingredientLines: string[];
+  if (ingredientsAt !== -1) {
+    const end = methodAt !== -1 ? methodAt : lines.length;
+    ingredientLines = lines.slice(ingredientsAt + 1, end).filter(Boolean);
+  } else {
+    ingredientLines = [];
+    let started = false;
+    for (const line of lines) {
+      if (!line) {
+        if (started) break;
+        continue;
+      }
+      if (title && line.toLowerCase() === title.toLowerCase()) continue;
+      if (looksLikeMeta(line)) continue;
+      if (looksLikeIngredientLine(line)) {
+        ingredientLines.push(line);
+        started = true;
+      } else if (started) {
+        break;
+      }
+    }
+  }
+
+  const ingredients = dedupeLines(ingredientLines)
+    .filter((line) => !isJunkIngredient(line))
+    .map(splitIngredient)
+    .filter((x): x is ScrapedIngredient => x != null);
+
+  // --- Method: from the method heading, else from just past the last line we
+  //     treated as an ingredient.
+  let methodStart: number;
+  if (methodAt !== -1) {
+    methodStart = methodAt + 1;
+  } else {
+    const consumed = new Set(ingredientLines);
+    let lastIngIdx = -1;
+    lines.forEach((line, i) => {
+      if (consumed.has(line)) lastIngIdx = i;
+    });
+    methodStart = lastIngIdx === -1 ? lines.length : lastIngIdx + 1;
+  }
+  const methodEnd = trailerAt !== -1 && trailerAt >= methodStart ? trailerAt : lines.length;
+  const instructions = clip(
+    lines.slice(methodStart, methodEnd).join("\n").replace(/\n{3,}/g, "\n\n").trim() || null,
+    RECIPE_INSTRUCTIONS_MAX_LENGTH
+  );
+
+  if (ingredients.length === 0 && !instructions) return null;
+
+  const cuisine = mapCuisine(null, null, title);
+  const diet = deriveDietType(null, ingredients, title, null);
+  const prepTimeCategory = minutesToPrepTimeCategory(prepMinutesFromText(input));
+
+  const warnings: string[] = [];
+  if (!title) warnings.push("Couldn’t spot a title — add one before saving.");
+  if (ingredients.length === 0) warnings.push("No ingredients were found in the text.");
+  if (!instructions) warnings.push("No method was found in the text.");
+  if (!prepTimeCategory) warnings.push("Couldn’t work out the prep time.");
+  if (!cuisine) warnings.push("Couldn’t work out the cuisine.");
+  if (diet.guessed) warnings.push("Guessed the diet type from the ingredients — worth checking.");
+  else if (!diet.value) warnings.push("Couldn’t work out the diet type.");
+
+  return {
+    recipe: {
+      sourceUrl: "",
+      title: clip(title, RECIPE_TITLE_MAX_LENGTH),
+      summaryDescription: clip(summary, RECIPE_SUMMARY_MAX_LENGTH),
+      instructions,
+      ingredients,
+      imageUrl: null,
+      prepTimeCategory,
+      cuisine,
+      dietType: diet.value,
+    },
+    warnings,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Fetching
 // ---------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@ import {
   mapCuisine,
   minutesToPrepTimeCategory,
   parseIsoDurationMinutes,
+  parseRecipeText,
   splitIngredient,
 } from "./import";
 
@@ -137,6 +138,82 @@ describe("splitIngredient", () => {
     const result = splitIngredient("1 (400g) can chickpeas, drained");
     expect(result?.name).toBe("Chickpeas, drained");
     expect(result?.quantity).toMatch(/400/);
+  });
+});
+
+describe("parseRecipeText", () => {
+  it("splits a paste that has Ingredients / Method headings", () => {
+    const text = [
+      "Spaghetti Aglio e Olio",
+      "",
+      "Serves 4 · 20 minutes",
+      "",
+      "Ingredients",
+      "400g spaghetti",
+      "6 garlic cloves, thinly sliced",
+      "120ml extra virgin olive oil",
+      "1 tsp chilli flakes",
+      "Small bunch parsley, chopped",
+      "",
+      "Method",
+      "1. Cook the spaghetti in salted boiling water until al dente.",
+      "2. Gently fry the garlic in the oil until golden.",
+      "3. Toss the drained pasta with the oil, parsley and seasoning.",
+    ].join("\n");
+    const result = parseRecipeText(text);
+    expect(result).not.toBeNull();
+    const r = result!.recipe;
+    expect(r.title).toBe("Spaghetti Aglio e Olio");
+    expect(r.ingredients).toHaveLength(5);
+    expect(r.ingredients[0]).toEqual({ quantity: "400 g", name: "Spaghetti" });
+    expect(r.ingredients.map((i) => i.name)).toContain("Chilli flakes");
+    expect(r.instructions).toContain("Cook the spaghetti");
+    expect(r.instructions).toContain("Toss the drained pasta");
+  });
+
+  it("handles an ALL CAPS title, bullet ingredients, a DIRECTIONS heading and a prep line", () => {
+    const text = [
+      "SPAGHETTI AGLIO E OLIO",
+      "Prep: 5 mins · Cook: 15 mins",
+      "",
+      "INGREDIENTS",
+      "- 400 g spaghetti",
+      "- 6 cloves garlic",
+      "- 120 ml olive oil",
+      "",
+      "DIRECTIONS",
+      "Bring a large pot of salted water to a boil and cook the pasta.",
+      "Meanwhile, warm the oil and garlic in a pan.",
+    ].join("\n");
+    const r = parseRecipeText(text)!.recipe;
+    expect(r.title).toBe("Spaghetti Aglio E Olio");
+    expect(r.prepTimeCategory).toBe("UNDER_15");
+    expect(r.ingredients).toHaveLength(3);
+    expect(r.ingredients[1]).toEqual({ quantity: "6 cloves", name: "Garlic" });
+    expect(r.instructions?.startsWith("Bring a large pot")).toBe(true);
+  });
+
+  it("falls back to line shape when there are no headings", () => {
+    const text = [
+      "Quick tomato pasta",
+      "2 tbsp olive oil",
+      "1 onion, diced",
+      "2 garlic cloves, crushed",
+      "400g tin chopped tomatoes",
+      "300g pasta",
+      "Handful of basil",
+      "Heat the oil and soften the onion for 5 minutes. Add the garlic and tomatoes and simmer for 15 minutes. Cook the pasta, drain and stir through. Serve topped with basil.",
+    ].join("\n");
+    const r = parseRecipeText(text)!.recipe;
+    expect(r.title).toBe("Quick tomato pasta");
+    expect(r.ingredients).toHaveLength(6);
+    expect(r.ingredients.map((i) => i.name)).toContain("Basil");
+    expect(r.instructions?.startsWith("Heat the oil")).toBe(true);
+  });
+
+  it("returns null when the text has no recipe in it", () => {
+    expect(parseRecipeText("")).toBeNull();
+    expect(parseRecipeText("just some words with no recipe structure here at all")).toBeNull();
   });
 });
 

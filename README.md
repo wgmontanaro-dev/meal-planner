@@ -92,21 +92,31 @@ so a change doesn't undo it:
   recipe form prompts (`window.confirm`) before discarding unsaved edits on
   Cancel / Escape / backdrop / close. SPEC.md §§13.6, 15.5, 18.1, 23 carry
   the amendment notes.
-- **Add a recipe from a URL.** The Add Recipe dialog opens on a chooser —
-  paste a recipe web address, or enter the details by hand.
-  `lib/recipes/import.ts` (a pure, unit-tested module) fetches the page and
-  reads a recipe out of schema.org JSON-LD, then microdata, then OpenGraph:
-  ingredients and method first, then title / summary / image, then *derived*
-  prep time (ISO-8601 `totalTime`), cuisine (`recipeCuisine` + a synonym
-  table) and diet type (`suitableForDiet`, else a meat/fish keyword scan of
-  the ingredients — a soft guess is flagged as a warning).
-  `importRecipeFromUrlAction` in `lib/recipes/actions.ts` runs it and
-  returns pre-filled form values plus warnings; it never writes — the user
-  reviews and submits the normal create form. `createRecipe` then attaches
-  any discovered image via `uploadRecipeImageFromUrl` (`lib/images/actions.ts`,
-  best-effort; a file the user picks wins). Pages with no readable recipe
-  (video, forum, JS-only) fail cleanly to "add it manually". Retries and a
-  Wayback Machine fallback cover flaky or blocking hosts.
+- **Add a recipe from a URL, or from pasted text.** The Add Recipe dialog
+  opens on a chooser — import from a recipe web address, **paste recipe
+  text** (from a page or a PDF), or enter the details by hand.
+  `lib/recipes/import.ts` (a pure, unit-tested module) does both:
+  - `extractRecipeFromHtml` fetches the page and reads a recipe out of
+    schema.org JSON-LD, then microdata, then a plain-HTML fallback
+    (recipe-card plugin markup, a `<ul>`/`<ol>` after an "Ingredients"
+    heading, or a run of sibling `<div>`s after an "Ingredients" label);
+    ingredients and method first, then title / summary / image, then
+    *derived* prep time (ISO-8601 `totalTime`), cuisine (`recipeCuisine` +
+    a synonym table) and diet type (`suitableForDiet`, else a meat/fish
+    keyword scan — a soft guess is flagged as a warning). A `BlockedError`
+    (HTTP 401/403/429/451 or a Cloudflare interstitial) is reported as
+    such; retries and a Wayback Machine fallback cover flaky hosts.
+  - `parseRecipeText` takes copied text and splits it into title /
+    ingredients / method, using "Ingredients"/"Method" headings when
+    present and line shape when not. No network — this is the way around
+    sites that block importing.
+
+  `importRecipeFromUrlAction` / `importRecipeFromTextAction` in
+  `lib/recipes/actions.ts` run these and return pre-filled form values
+  plus warnings; neither writes — the user reviews and submits the normal
+  create form. `createRecipe` then attaches any discovered image via
+  `uploadRecipeImageFromUrl` (`lib/images/actions.ts`, best-effort; a file
+  the user picks wins).
 - **Ingredient backfill scripts.** `scripts/populate-ingredients-from-source.mjs`
   and `scripts/populate-ingredients-manual.mjs` were a one-off pass to fill
   ingredients for library recipes that had a `source_url` but no ingredient

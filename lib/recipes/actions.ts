@@ -12,7 +12,7 @@ import {
   uploadRecipeImage,
   uploadRecipeImageFromUrl,
 } from "@/lib/images/actions";
-import { importRecipeFromUrl, type ScrapedRecipe } from "@/lib/recipes/import";
+import { importRecipeFromUrl, parseRecipeText, type ScrapedRecipe } from "@/lib/recipes/import";
 import { signRecipeImageUrls } from "@/lib/images/urls";
 import type { RecipeImageUrls } from "@/lib/images/types";
 import {
@@ -373,6 +373,44 @@ export async function importRecipeFromUrlAction(
     values: scrapedToFormValues(outcome.recipe),
     importedImageUrl: outcome.recipe.imageUrl,
     warnings: outcome.warnings,
+  };
+}
+
+/**
+ * Parses recipe text pasted from a page or a PDF into pre-filled form values.
+ * No network, so it works even when a site blocks importing. Never writes:
+ * the user reviews the result and submits the normal create form.
+ */
+export async function importRecipeFromTextAction(
+  _prevState: ImportRecipeState,
+  formData: FormData
+): Promise<ImportRecipeState> {
+  await requireSession();
+
+  const text = String(formData.get("text") ?? "").trim();
+  if (text.length < 20) {
+    return {
+      status: "error",
+      message: "Paste the recipe — at least a title and an ingredient list.",
+      text,
+    };
+  }
+
+  const parsed = parseRecipeText(text);
+  if (!parsed) {
+    return {
+      status: "error",
+      message:
+        "Couldn’t find a recipe in that text. Make sure the ingredients and the method are both included.",
+      text,
+    };
+  }
+
+  return {
+    status: "success",
+    values: scrapedToFormValues(parsed.recipe),
+    importedImageUrl: null,
+    warnings: parsed.warnings,
   };
 }
 
